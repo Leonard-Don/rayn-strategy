@@ -1,5 +1,9 @@
 # Rayn Strategy Research
 
+[![CI](https://github.com/Leonard-Don/rayn-strategy/actions/workflows/ci.yml/badge.svg)](https://github.com/Leonard-Don/rayn-strategy/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/python-3.12%2B-3776AB)
+![License](https://img.shields.io/badge/license-MIT-blue)
+
 Rayn Strategy Research is a Python scaffold for crypto-market strategy research,
 offline backtesting, stress testing, and simulated monitoring.
 
@@ -111,3 +115,7 @@ cache data.
 The project should remain an offline research repository. Any future account
 connector, signing client, or automated trading path should stay outside this
 public codebase unless it is reviewed and intentionally re-scoped.
+
+## License
+
+MIT License. See [LICENSE](LICENSE).
