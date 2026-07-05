@@ -1,0 +1,37 @@
+[portfolio]
+initial_equity = 10000.0
+quote_asset = "USDT"
+taker_fee_bps = 5.0
+slippage_bps = 3.0
+
+[strategy]
+timeframe = "1h"
+trend_ma_bars = 200
+breakout_lookback_bars = 48
+breakout_buffer_pct = 0.003
+panic_lookback_bars = 72
+panic_drop_pct = 0.08
+panic_rsi_bars = 14
+panic_rsi_max = 34.0
+rebound_confirm_pct = 0.002
+take_profit_pct = 0.020
+stop_loss_pct = 0.016
+max_hold_bars = 72
+
+[risk]
+leverage = 2.0
+risk_per_trade_pct = 0.0005
+max_position_notional_pct = 0.10
+max_total_notional_pct = 0.30
+max_used_margin_pct = 0.16
+max_open_positions = 2
+max_daily_loss_pct = 0.008
+max_account_drawdown_pct = 0.05
+allow_scale_in = false
+
+[circuit_breaker]
+benchmark_symbol = "BTCUSDT"
+benchmark_drop_lookback_bars = 4
+benchmark_drop_pct = 0.03
+pause_bars = 24
+close_positions_on_trigger = true

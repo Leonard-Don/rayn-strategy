@@ -1,0 +1,70 @@
+# Rayn short-regime aggressive simulated observer.
+# Higher-risk comparison profile for weak crypto regimes after the baseline
+# short profile has produced a signal.
+
+[portfolio]
+initial_equity = 75.0
+quote_asset = "USDT"
+taker_fee_bps = 5.0
+slippage_bps = 7.0
+
+[risk]
+leverage = 3.0
+risk_per_trade_pct = 0.0075
+max_position_notional_pct = 0.30
+max_total_notional_pct = 0.60
+max_used_margin_pct = 0.60
+max_open_positions = 2
+max_daily_loss_pct = 0.99
+max_account_drawdown_pct = 0.20
+allow_scale_in = false
+max_consecutive_losses = 0
+loss_cooldown_bars = 0
+
+[circuit_breaker]
+benchmark_symbol = "BTCUSDT"
+benchmark_drop_lookback_bars = 4
+benchmark_drop_pct = 0.99
+pause_bars = 0
+close_positions_on_trigger = false
+
+[momentum]
+trend_ma_bars = 200
+breakout_bars = 48
+momentum_bars = 24
+min_momentum_pct = 0.015
+rsi_bars = 14
+max_entry_rsi = 65.0
+atr_bars = 48
+stop_atr_mult = 3.5
+trail_atr_mult = 5.0
+risk_per_trade_pct = 0.0075
+max_hold_bars = 240
+regime_ma_bars = 200
+regime_band_pct = 0.01
+allow_long = false
+allow_short = true
+
+# inert filler so load_config() succeeds (unused by MomentumEngine / paper)
+[strategy]
+timeframe = "1h"
+trend_ma_bars = 200
+breakout_lookback_bars = 48
+breakout_buffer_pct = 0.003
+panic_lookback_bars = 72
+panic_drop_pct = 0.08
+panic_rsi_bars = 14
+panic_rsi_max = 34.0
+rebound_confirm_pct = 0.002
+take_profit_pct = 0.01
+stop_loss_pct = 0.018
+max_hold_bars = 240
+
+[grid]
+max_rescue_layers = 0
+layer_step_pct = 0.01
+layer_multiplier = 1.0
+take_profit_pct = 0.01
+hard_stop_pct = 0.10
+max_symbol_notional_pct = 0.5
+max_total_notional_pct = 1.0
