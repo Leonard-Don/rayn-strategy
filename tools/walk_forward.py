@@ -6,14 +6,11 @@ from __future__ import annotations
 import argparse
 import csv
 from dataclasses import replace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-import sys
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
-from src.rayn_strategy.backtest import BacktestEngine, BacktestResult, load_candles
-from src.rayn_strategy.config import RaynConfig, load_config
+from rayn_strategy.backtest import BacktestEngine, BacktestResult, load_candles
+from rayn_strategy.config import RaynConfig, load_config
 
 
 def parse_args() -> argparse.Namespace:
@@ -274,7 +271,7 @@ def next_month(timestamp: str) -> str:
     parsed = datetime.fromisoformat(timestamp)
     year = parsed.year + (1 if parsed.month == 12 else 0)
     month = 1 if parsed.month == 12 else parsed.month + 1
-    return datetime(year, month, 1, tzinfo=timezone.utc).isoformat()
+    return datetime(year, month, 1, tzinfo=UTC).isoformat()
 
 
 def to_utc(value: str) -> str:
@@ -285,8 +282,8 @@ def to_utc(value: str) -> str:
         item = item[:-1] + "+00:00"
     parsed = datetime.fromisoformat(item)
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(timezone.utc).isoformat()
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC).isoformat()
 
 
 def unique_values(values: list[float | int]) -> list:

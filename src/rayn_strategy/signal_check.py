@@ -48,10 +48,7 @@ class SignalCheckResult:
             lines.append(f"buy_symbols:      {','.join(self.buy_symbols)}")
         lines.append("symbol_decisions:")
         for decision in self.decisions:
-            lines.append(
-                f"  {decision.symbol}: {decision.action} "
-                f"reason={decision.reason} price={decision.price:.10g}"
-            )
+            lines.append(f"  {decision.symbol}: {decision.action} reason={decision.reason} price={decision.price:.10g}")
         return "\n".join(lines)
 
 

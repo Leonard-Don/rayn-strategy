@@ -7,11 +7,8 @@ import argparse
 import csv
 from dataclasses import dataclass
 from pathlib import Path
-import sys
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
-from src.rayn_strategy.funding import funding_cost_for_trade, load_funding_events
+from rayn_strategy.funding import funding_cost_for_trade, load_funding_events
 
 
 @dataclass

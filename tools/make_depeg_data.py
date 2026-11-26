@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import argparse
 import csv
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -115,8 +115,8 @@ def normalize_timestamp(value: str) -> str:
         item = item[:-1] + "+00:00"
     parsed = datetime.fromisoformat(item)
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(timezone.utc).isoformat()
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC).isoformat()
 
 
 if __name__ == "__main__":

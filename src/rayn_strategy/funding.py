@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import csv
 from dataclasses import dataclass
 from pathlib import Path
-import csv
 
 from .backtest import normalize_timestamp
 
@@ -35,9 +35,9 @@ def load_funding_events(path: Path) -> list[FundingEvent]:
 
 
 def funding_cost_for_trade(trade: object, events: list[FundingEvent]) -> float:
-    entry_time = normalize_timestamp(str(getattr(trade, "entry_time")))
-    exit_time = normalize_timestamp(str(getattr(trade, "exit_time")))
-    notional = float(getattr(trade, "notional"))
+    entry_time = normalize_timestamp(str(trade.entry_time))
+    exit_time = normalize_timestamp(str(trade.exit_time))
+    notional = float(trade.notional)
     total = 0.0
     for event in events:
         if entry_time < event.timestamp <= exit_time:

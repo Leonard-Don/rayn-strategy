@@ -34,18 +34,15 @@ Run:  python3 tools/momentum_funding_cost.py
 
 from __future__ import annotations
 
-import sys
 from dataclasses import replace
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from rayn_strategy.backtest import load_candles
+from rayn_strategy.config import load_config, load_raw_config
+from rayn_strategy.momentum import MomentumConfig, MomentumEngine
+
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
-
-from src.rayn_strategy.config import load_config, load_raw_config
-from src.rayn_strategy.backtest import load_candles
-from src.rayn_strategy.momentum import MomentumConfig, MomentumEngine
-
 SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT"]
 
 # Same run/setup pattern as tools/momentum_paper_backtest.py:
@@ -77,8 +74,13 @@ FUNDING_PER_DAY = 3  # 8h settlements per day at 00:00 / 08:00 / 16:00 UTC
 # --------------------------------------------------------------------------- #
 def run(entry_start, run_end):
     return MomentumEngine(
-        config=CFG, mom=MOM, data_dir=ROOT / "data_multicycle", symbols=SYMBOLS,
-        preloaded_data=DATA, entry_start=entry_start, run_end=run_end,
+        config=CFG,
+        mom=MOM,
+        data_dir=ROOT / "data_multicycle",
+        symbols=SYMBOLS,
+        preloaded_data=DATA,
+        entry_start=entry_start,
+        run_end=run_end,
     ).run()
 
 
@@ -92,8 +94,8 @@ def _parse(ts: str) -> datetime:
         s = s[:-1] + "+00:00"
     dt = datetime.fromisoformat(s)
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC)
 
 
 def settlement_times(entry_time: str, exit_time: str) -> list[datetime]:
@@ -130,6 +132,7 @@ def funding_cost_constant(trade, r_annual: float) -> float:
 # --------------------------------------------------------------------------- #
 def load_funding(path: Path) -> list[tuple[datetime, float]]:
     import csv
+
     rows: list[tuple[datetime, float]] = []
     with path.open("r", newline="") as h:
         for raw in csv.DictReader(h):
@@ -184,7 +187,7 @@ def main() -> int:
 
     # ---- mode (a): constant-rate sensitivity -------------------------------
     print("--- Mode (a): CONSTANT-RATE SENSITIVITY (net-of-funding ROI) ---")
-    cols = "".join(f"{f'{int(r*100)}%/yr':>9}" for r in R_ANNUAL_SWEEP)
+    cols = "".join(f"{f'{int(r * 100)}%/yr':>9}" for r in R_ANNUAL_SWEEP)
     print(f"{'period':22}{cols}")
     for lbl, _, _ in CYCLES:
         r = results[lbl]
@@ -200,45 +203,42 @@ def main() -> int:
     for ra in R_ANNUAL_SWEEP:
         net = net_roi_constant(full, ra)
         drag = total_funding_dollars(full, ra)
-        print(f"  net ROI @ {int(ra*100):>2d}%/yr funding:  {net:>+8.1%}   "
-              f"(funding drag ${drag:,.0f} on ${full.initial_equity:,.0f})")
+        print(
+            f"  net ROI @ {int(ra * 100):>2d}%/yr funding:  {net:>+8.1%}   "
+            f"(funding drag ${drag:,.0f} on ${full.initial_equity:,.0f})"
+        )
 
     # ---- per-cycle breakdown at representative rate ------------------------
-    print(f"\n--- Per-cycle breakdown @ {int(REPRESENTATIVE_R*100)}%/yr funding "
-          f"(representative) ---")
+    print(f"\n--- Per-cycle breakdown @ {int(REPRESENTATIVE_R * 100)}%/yr funding (representative) ---")
     print(f"{'period':22}{'gross ROI':>12}{'funding $':>12}{'net ROI':>12}")
     for lbl, _, _ in CYCLES:
         r = results[lbl]
-        print(f"{lbl:22}{gross_roi(r):>+12.1%}"
-              f"{total_funding_dollars(r, REPRESENTATIVE_R):>12,.0f}"
-              f"{net_roi_constant(r, REPRESENTATIVE_R):>+12.1%}")
+        print(
+            f"{lbl:22}{gross_roi(r):>+12.1%}"
+            f"{total_funding_dollars(r, REPRESENTATIVE_R):>12,.0f}"
+            f"{net_roi_constant(r, REPRESENTATIVE_R):>+12.1%}"
+        )
 
     # ---- mode (b): real funding (only if data present) ---------------------
     print("\n--- Mode (b): REAL-FUNDING (data_funding/) ---")
     funding_dir = ROOT / "data_funding"
-    have_all = funding_dir.is_dir() and all(
-        (funding_dir / f"{s}.csv").exists() for s in SYMBOLS
-    )
+    have_all = funding_dir.is_dir() and all((funding_dir / f"{s}.csv").exists() for s in SYMBOLS)
     if not have_all:
         missing = []
         if not funding_dir.is_dir():
             missing.append("data_funding/ directory")
         else:
-            missing = [f"data_funding/{s}.csv" for s in SYMBOLS
-                       if not (funding_dir / f"{s}.csv").exists()]
+            missing = [f"data_funding/{s}.csv" for s in SYMBOLS if not (funding_dir / f"{s}.csv").exists()]
         print("SKIPPED — real-funding mode needs the funding CSVs.")
         print(f"  Missing: {', '.join(missing)}")
         print("  Provide data_funding/{SYMBOL}.csv with header `timestamp,funding_rate`")
         print("  (8h rows, funding_rate a float fraction like 0.0001, timestamp ISO8601 UTC).")
     else:
-        funding_by_symbol = {
-            s: dict(load_funding(funding_dir / f"{s}.csv")) for s in SYMBOLS
-        }
+        funding_by_symbol = {s: dict(load_funding(funding_dir / f"{s}.csv")) for s in SYMBOLS}
         print(f"{'period':22}{'gross ROI':>12}{'net-of-real':>14}")
         for lbl, _, _ in CYCLES:
             r = results[lbl]
-            print(f"{lbl:22}{gross_roi(r):>+12.1%}"
-                  f"{net_roi_real(r, funding_by_symbol):>+14.1%}")
+            print(f"{lbl:22}{gross_roi(r):>+12.1%}{net_roi_real(r, funding_by_symbol):>+14.1%}")
 
     # ---- caveat ------------------------------------------------------------
     print("\nCAVEAT: funding is applied POST-HOC on the gross trade log; it does NOT")

@@ -8,6 +8,10 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.13"]
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -15,12 +19,17 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python }}
 
-      - name: Install test dependencies
+      - name: Install package
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pytest
+          python -m pip install -e '.[dev]'
+
+      - name: Ruff
+        run: |
+          ruff check .
+          ruff format --check .
 
       - name: Run tests
         run: python -m pytest -q

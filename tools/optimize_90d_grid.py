@@ -5,18 +5,17 @@ from __future__ import annotations
 
 import argparse
 import csv
-from dataclasses import replace
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
 import sys
+from dataclasses import replace
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from rayn_strategy.backtest import BacktestResult, Candle, load_candles
+from rayn_strategy.config import RaynConfig, load_config
+from rayn_strategy.grid import BoundedGridConfig, BoundedGridEngine
 from run_grid_backtest import load_grid_config
-from src.rayn_strategy.backtest import BacktestResult, Candle, load_candles
-from src.rayn_strategy.config import RaynConfig, load_config
-from src.rayn_strategy.grid import BoundedGridConfig, BoundedGridEngine
-
 
 DEFAULT_UNIVERSES = [
     "BTCUSDT,ETHUSDT,ZECUSDT",
@@ -36,7 +35,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--top", type=int, default=20, help="Number of rows to print.")
     parser.add_argument("--target-roi", type=float, default=0.80, help="Target 90-day ROI.")
     parser.add_argument("--target-dd", type=float, default=0.10, help="Target marked max drawdown.")
-    parser.add_argument("--scan-september", action="store_true", help="Run windows ending Sep 1, Sep 15, and Sep 30.")
+    parser.add_argument(
+        "--scan-september",
+        action="store_true",
+        help="Run windows ending Sep 1, Sep 15, and Sep 30.",
+    )
     return parser.parse_args()
 
 
@@ -67,7 +70,10 @@ def main() -> int:
             )
         )
 
-    rows.sort(key=lambda row: (bool(row["meets_target"]), float(row["score"]), float(row["roi"])), reverse=True)
+    rows.sort(
+        key=lambda row: (bool(row["meets_target"]), float(row["score"]), float(row["roi"])),
+        reverse=True,
+    )
     write_rows(Path(args.out), rows)
     print_rows(rows[: args.top])
     print(f"rows: {len(rows)}")
@@ -177,12 +183,8 @@ def summarize_result(
     roi = (result.final_equity - result.initial_equity) / result.initial_equity
     realized_dd = max_drawdown([point.cash_equity for point in result.equity_curve])
     marked_dd = result.max_drawdown_pct
-    max_notional_pct = max_ratio(
-        [(point.open_notional, point.marked_equity) for point in result.equity_curve]
-    )
-    max_margin_pct = max_ratio(
-        [(point.open_margin, point.marked_equity) for point in result.equity_curve]
-    )
+    max_notional_pct = max_ratio([(point.open_notional, point.marked_equity) for point in result.equity_curve])
+    max_margin_pct = max_ratio([(point.open_margin, point.marked_equity) for point in result.equity_curve])
     wins = [trade for trade in result.trades if trade.pnl > 0]
     win_rate = len(wins) / len(result.trades) if result.trades else 0.0
     deep_pnl = sum(trade.pnl for trade in result.trades if layer_count(trade.entry_reason) >= 5)
@@ -289,11 +291,7 @@ def print_rows(rows: list[dict[str, object]]) -> None:
 
 def parse_universes(raw: str | None) -> list[list[str]]:
     items = raw.split(";") if raw else DEFAULT_UNIVERSES
-    return [
-        [symbol.strip().upper() for symbol in item.split(",") if symbol.strip()]
-        for item in items
-        if item.strip()
-    ]
+    return [[symbol.strip().upper() for symbol in item.split(",") if symbol.strip()] for item in items if item.strip()]
 
 
 def load_universe_data(data_dir: Path, universes: list[list[str]]) -> dict[str, list[Candle]]:
@@ -309,11 +307,8 @@ def filter_preloaded_data(
     warmup_hours: int,
 ) -> dict[str, list[Candle]]:
     start_dt = datetime.fromisoformat(start) - timedelta(hours=warmup_hours)
-    warmup_start = start_dt.astimezone(timezone.utc).isoformat()
-    return {
-        symbol: [row for row in rows if warmup_start <= row.timestamp < end]
-        for symbol, rows in data.items()
-    }
+    warmup_start = start_dt.astimezone(UTC).isoformat()
+    return {symbol: [row for row in rows if warmup_start <= row.timestamp < end] for symbol, rows in data.items()}
 
 
 def to_utc(value: str) -> str:
@@ -324,13 +319,13 @@ def to_utc(value: str) -> str:
         item = item[:-1] + "+00:00"
     parsed = datetime.fromisoformat(item)
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(timezone.utc).isoformat()
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC).isoformat()
 
 
 def subtract_days(timestamp: str, days: int) -> str:
     parsed = datetime.fromisoformat(timestamp)
-    return (parsed - timedelta(days=days)).astimezone(timezone.utc).isoformat()
+    return (parsed - timedelta(days=days)).astimezone(UTC).isoformat()
 
 
 if __name__ == "__main__":

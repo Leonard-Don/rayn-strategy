@@ -13,15 +13,11 @@ invariants that, if violated, would mean published report numbers are unreliable
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-from src.rayn_strategy.backtest import BacktestEngine, load_candles, normalize_timestamp
-from src.rayn_strategy.config import load_config, load_raw_config
-from src.rayn_strategy.grid import BoundedGridConfig, BoundedGridEngine
-
+from rayn_strategy.backtest import BacktestEngine, load_candles
+from rayn_strategy.config import load_config, load_raw_config
+from rayn_strategy.grid import BoundedGridConfig, BoundedGridEngine
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -111,20 +107,23 @@ def probe_3_sizing() -> None:
     print(f"  risk_per_trade_pct        = {rpt:.6f}")
     print(f"  strategy.stop_loss_pct    = {strat_stop:.4f}  (used by position_notional)")
     print(f"  grid.hard_stop_pct        = {gcfg.hard_stop_pct:.4f}  (actual grid stop)")
-    print(f"  raw notional = eq*rpt/stop= {raw:,.2f}  ({raw/equity:.2%} of equity)")
-    print(f"  cap = eq*max_pos_notional = {cap:,.2f}  ({cap/equity:.2%} of equity)")
-    print(f"  base layer notional       = {base:,.2f}  ({base/equity:.2%} of equity)")
+    print(f"  raw notional = eq*rpt/stop= {raw:,.2f}  ({raw / equity:.2%} of equity)")
+    print(f"  cap = eq*max_pos_notional = {cap:,.2f}  ({cap / equity:.2%} of equity)")
+    print(f"  base layer notional       = {base:,.2f}  ({base / equity:.2%} of equity)")
     # Stack all rescue layers.
-    total = sum(base * (gcfg.layer_multiplier ** k) for k in range(gcfg.max_rescue_layers + 1))
-    print(f"  full-stack notional (all {gcfg.max_rescue_layers} rescue layers)"
-          f" = {total:,.2f}  ({total/equity:.2f}x equity)")
+    total = sum(base * (gcfg.layer_multiplier**k) for k in range(gcfg.max_rescue_layers + 1))
+    print(
+        f"  full-stack notional (all {gcfg.max_rescue_layers} rescue layers)"
+        f" = {total:,.2f}  ({total / equity:.2f}x equity)"
+    )
     nominal_risk = base * strat_stop
     true_risk_full = total * gcfg.hard_stop_pct
-    print(f"  nominal risk/trade (base*strat_stop)      = {nominal_risk:,.2f}"
-          f"  ({nominal_risk/equity:.2%} of equity)")
-    print(f"  true risk if full stack hits hard_stop    = {true_risk_full:,.2f}"
-          f"  ({true_risk_full/equity:.2%} of equity)")
-    print(f"  true/nominal ratio                        = {true_risk_full/nominal_risk:,.1f}x")
+    print(f"  nominal risk/trade (base*strat_stop)      = {nominal_risk:,.2f}  ({nominal_risk / equity:.2%} of equity)")
+    print(
+        f"  true risk if full stack hits hard_stop    = {true_risk_full:,.2f}"
+        f"  ({true_risk_full / equity:.2%} of equity)"
+    )
+    print(f"  true/nominal ratio                        = {true_risk_full / nominal_risk:,.1f}x")
 
 
 def _roi(result) -> float:
@@ -140,16 +139,25 @@ def probe_4_window_vs_symbol() -> None:
 
     def run(symbols, entry_start=None):
         return BoundedGridEngine(
-            config=cfg, grid_config=grid_cfg, data_dir=data_dir,
-            symbols=symbols, entry_start=entry_start,
+            config=cfg,
+            grid_config=grid_cfg,
+            data_dir=data_dir,
+            symbols=symbols,
+            entry_start=entry_start,
         ).run()
 
-    a = run(["BTCUSDT", "ZECUSDT"])                              # full window
-    b = run(["BTCUSDT", "ZECUSDT"], entry_start="2025-05-30")    # HYPE's window, same symbols
-    c = run(["BTCUSDT", "ZECUSDT", "HYPEUSDT"])                  # auto-truncated to HYPE's window
-    print(f"  (a) BTC,ZEC        full 2024-2025          ROI={_roi(a):+7.2%}  DD={a.max_drawdown_pct:.2%}  halted={a.halted}  trades={len(a.trades)}")
-    print(f"  (b) BTC,ZEC        from 2025-05-30 (HYPE win) ROI={_roi(b):+7.2%}  DD={b.max_drawdown_pct:.2%}  halted={b.halted}  trades={len(b.trades)}")
-    print(f"  (c) BTC,ZEC,HYPE   full -> truncated 2025-05-30 ROI={_roi(c):+7.2%}  DD={c.max_drawdown_pct:.2%}  halted={c.halted}  trades={len(c.trades)}")
+    a = run(["BTCUSDT", "ZECUSDT"])  # full window
+    b = run(["BTCUSDT", "ZECUSDT"], entry_start="2025-05-30")  # HYPE's window, same symbols
+    c = run(["BTCUSDT", "ZECUSDT", "HYPEUSDT"])  # auto-truncated to HYPE's window
+    print(
+        f"  (a) BTC,ZEC        full 2024-2025          ROI={_roi(a):+7.2%}  DD={a.max_drawdown_pct:.2%}  halted={a.halted}  trades={len(a.trades)}"  # noqa: E501
+    )
+    print(
+        f"  (b) BTC,ZEC        from 2025-05-30 (HYPE win) ROI={_roi(b):+7.2%}  DD={b.max_drawdown_pct:.2%}  halted={b.halted}  trades={len(b.trades)}"  # noqa: E501
+    )
+    print(
+        f"  (c) BTC,ZEC,HYPE   full -> truncated 2025-05-30 ROI={_roi(c):+7.2%}  DD={c.max_drawdown_pct:.2%}  halted={c.halted}  trades={len(c.trades)}"  # noqa: E501
+    )
     print("  (a)->(b): pure WINDOW effect (same symbols, different period).")
     print("  (b)->(c): pure SYMBOL effect (same period, +HYPE).")
 

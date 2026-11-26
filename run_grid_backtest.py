@@ -8,9 +8,9 @@ import csv
 import json
 from pathlib import Path
 
-from src.rayn_strategy.exchange_filters import SymbolFilter, symbol_filters_from_exchange_info
-from src.rayn_strategy.grid import BoundedGridConfig, BoundedGridEngine
-from src.rayn_strategy.config import load_config, load_raw_config
+from rayn_strategy.config import load_config, load_raw_config
+from rayn_strategy.exchange_filters import SymbolFilter, symbol_filters_from_exchange_info
+from rayn_strategy.grid import BoundedGridConfig, BoundedGridEngine
 
 
 def parse_args() -> argparse.Namespace:

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -29,11 +29,7 @@ def main() -> int:
 
     for path in sorted(data_dir.glob("*.csv")):
         symbol = path.stem.upper()
-        drop_pct = (
-            args.benchmark_drop_pct
-            if symbol == args.benchmark_symbol.upper()
-            else args.alt_drop_pct
-        )
+        drop_pct = args.benchmark_drop_pct if symbol == args.benchmark_symbol.upper() else args.alt_drop_pct
         rows = read_rows(path)
         index = first_index_at_or_after(rows, shock_time)
         if index is None:
@@ -90,8 +86,8 @@ def normalize_timestamp(value: str) -> str:
         item = item[:-1] + "+00:00"
     parsed = datetime.fromisoformat(item)
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(timezone.utc).isoformat()
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC).isoformat()
 
 
 if __name__ == "__main__":

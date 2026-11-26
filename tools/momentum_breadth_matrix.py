@@ -8,18 +8,14 @@ from __future__ import annotations
 
 import argparse
 import csv
-import sys
 from dataclasses import replace
 from pathlib import Path
 
+from rayn_strategy.backtest import BacktestResult, load_candles
+from rayn_strategy.config import load_config, load_raw_config
+from rayn_strategy.momentum import MomentumConfig, MomentumEngine
+
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
-
-from src.rayn_strategy.backtest import BacktestResult, load_candles
-from src.rayn_strategy.config import load_config, load_raw_config
-from src.rayn_strategy.momentum import MomentumConfig, MomentumEngine
-
-
 DEFAULT_PERIODS = [
     ("2026 YTD", "2026-01-01", "2026-06-06"),
     ("2026 MarNow", "2026-03-01", "2026-06-06"),
@@ -55,7 +51,8 @@ def _stats(result: BacktestResult) -> dict[str, float | int]:
     avg_loss = sum(t.pnl for t in losses) / len(losses) if losses else 0.0
     in_market = (
         sum(1 for p in result.equity_curve if p.open_notional > 0) / len(result.equity_curve)
-        if result.equity_curve else 0.0
+        if result.equity_curve
+        else 0.0
     )
     return {
         "roi": roi,
@@ -102,11 +99,13 @@ def run_matrix(
                 preloaded_data=data,
             ).run()
             stats = _stats(result)
-            rows.append({
-                "threshold": threshold,
-                "period": label,
-                **stats,
-            })
+            rows.append(
+                {
+                    "threshold": threshold,
+                    "period": label,
+                    **stats,
+                }
+            )
     return rows
 
 

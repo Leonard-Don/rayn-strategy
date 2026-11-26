@@ -63,7 +63,7 @@ class MomentumConfig:
     risk_per_trade_pct: float = 0.0075
     max_hold_bars: int = 4320
     regime_ma_bars: int = 200
-    regime_band_pct: float = 0.0   # neutral band around the regime MA (reduces whipsaw / squeeze)
+    regime_band_pct: float = 0.0  # neutral band around the regime MA (reduces whipsaw / squeeze)
     long_breadth_ma_bars: int = 0
     min_long_breadth_pct: float = 0.0
     short_entry_mode: str = "breakdown"  # breakdown / bounce_failure / either
@@ -105,9 +105,9 @@ class MomPosition:
     entry_time: str
     entry_price: float
     notional: float
-    side: int                # +1 long, -1 short
+    side: int  # +1 long, -1 short
     stop_price: float
-    water: float             # highest close (long) / lowest close (short) since entry
+    water: float  # highest close (long) / lowest close (short) since entry
     bars_held: int = 0
 
 
@@ -256,8 +256,15 @@ class MomentumEngine:
             marked = self._marked(cash, positions, marks)
             peak = max(peak, marked)
             max_dd = max(max_dd, current_drawdown(marked, peak))
-            curve.append(EquityPoint(ts, cash, marked, sum(p.notional for p in positions.values()),
-                                     sum(p.notional / leverage for p in positions.values())))
+            curve.append(
+                EquityPoint(
+                    ts,
+                    cash,
+                    marked,
+                    sum(p.notional for p in positions.values()),
+                    sum(p.notional / leverage for p in positions.values()),
+                )
+            )
 
         finals = {s: by_time[s][last_ts].close for s in self.symbols}
         for s, p in list(positions.items()):
@@ -266,8 +273,14 @@ class MomentumEngine:
             del positions[s]
         peak = max(peak, cash)
         max_dd = max(max_dd, current_drawdown(cash, peak))
-        return BacktestResult(self.config.portfolio.initial_equity, cash, peak, max_dd,
-                              trades=trades, equity_curve=curve)
+        return BacktestResult(
+            self.config.portfolio.initial_equity,
+            cash,
+            peak,
+            max_dd,
+            trades=trades,
+            equity_curve=curve,
+        )
 
     def _liq(self, entry: float, side: int, leverage: float) -> float:
         if side > 0:
@@ -284,8 +297,7 @@ class MomentumEngine:
         if ma is None or hh is None or r is None:
             return False
         mom = pct_change(closes[-(self.mom.momentum_bars + 1)], closes[-1])
-        return (closes[-1] > ma and closes[-1] > hh and mom >= self.mom.min_momentum_pct
-                and r <= self.mom.max_entry_rsi)
+        return closes[-1] > ma and closes[-1] > hh and mom >= self.mom.min_momentum_pct and r <= self.mom.max_entry_rsi
 
     def _entry_short(self, closes: list[float]) -> bool:
         if self.mom.short_entry_mode == "bounce_failure":
@@ -305,8 +317,12 @@ class MomentumEngine:
             return False
         mom = pct_change(closes[-(self.mom.momentum_bars + 1)], closes[-1])
         # mirror of long: downtrend, fresh breakdown, downward momentum, not already washed out
-        return (closes[-1] < ma and closes[-1] < ll and mom <= -self.mom.min_momentum_pct
-                and r >= (100.0 - self.mom.max_entry_rsi))
+        return (
+            closes[-1] < ma
+            and closes[-1] < ll
+            and mom <= -self.mom.min_momentum_pct
+            and r >= (100.0 - self.mom.max_entry_rsi)
+        )
 
     def _entry_short_bounce_failure(self, closes: list[float]) -> bool:
         need = max(
@@ -322,7 +338,7 @@ class MomentumEngine:
         r = rsi(closes, self.mom.rsi_bars)
         if trend_ma is None or fail_ma is None or fail_ma <= 0 or r is None:
             return False
-        recent = closes[-(self.mom.short_bounce_lookback_bars + 1):-1]
+        recent = closes[-(self.mom.short_bounce_lookback_bars + 1) : -1]
         recent_low = min(recent)
         recent_high = max(recent)
         if recent_low <= 0:
@@ -430,7 +446,7 @@ class MomentumEngine:
             return _score_edge(closes[-1] / high - 1.0, self.mom.entry_quality_breakout_cap_pct)
 
         if self.mom.short_entry_mode == "bounce_failure":
-            recent = closes[-(self.mom.short_bounce_lookback_bars + 1):-1]
+            recent = closes[-(self.mom.short_bounce_lookback_bars + 1) : -1]
             if not recent:
                 return 0.0
             recent_low = min(recent)
@@ -458,9 +474,7 @@ class MomentumEngine:
     def _window_open(self, ts: str) -> bool:
         if self.entry_start and ts < self.entry_start:
             return False
-        if self.entry_end and ts >= self.entry_end:
-            return False
-        return True
+        return not (self.entry_end and ts >= self.entry_end)
 
     def _marked(self, cash, positions, prices) -> float:
         u = sum(p.side * p.notional * ((prices[s] / p.entry_price) - 1.0) for s, p in positions.items())

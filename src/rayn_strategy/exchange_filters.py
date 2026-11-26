@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal, ROUND_CEILING, ROUND_DOWN
+from decimal import ROUND_CEILING, ROUND_DOWN, Decimal
 
 from .config import RaynConfig
 
@@ -154,23 +154,17 @@ def symbol_filters_from_exchange_info(
         if symbol not in wanted:
             continue
         filters = {
-            str(item.get("filterType")): item
-            for item in raw_symbol.get("filters", [])
-            if isinstance(item, dict)
+            str(item.get("filterType")): item for item in raw_symbol.get("filters", []) if isinstance(item, dict)
         }
         market_lot_filter = filters.get("MARKET_LOT_SIZE") or {}
         lot_filter = filters.get("LOT_SIZE") or {}
-        if _positive_float(market_lot_filter.get("minQty")) and _positive_float(
-            market_lot_filter.get("stepSize")
-        ):
+        if _positive_float(market_lot_filter.get("minQty")) and _positive_float(market_lot_filter.get("stepSize")):
             lot_filter = market_lot_filter
         min_notional_filter = filters.get("MIN_NOTIONAL") or {}
         parsed[symbol] = SymbolFilter(
             min_qty=float(lot_filter.get("minQty", 0.0)),
             step_size=float(lot_filter.get("stepSize", 0.0)),
-            min_notional=float(
-                min_notional_filter.get("notional", min_notional_filter.get("minNotional", 0.0))
-            ),
+            min_notional=float(min_notional_filter.get("notional", min_notional_filter.get("minNotional", 0.0))),
         )
     return parsed
 

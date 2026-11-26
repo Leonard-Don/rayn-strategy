@@ -6,15 +6,13 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import sys
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
+from rayn_strategy.paths import repo_output_path, resolve_report_input_path
 
-from src.rayn_strategy.paths import repo_output_path, resolve_report_input_path
+ROOT = Path(__file__).resolve().parent.parent
 
 
 def load_equity_rows(path: Path) -> list[dict[str, Any]]:
@@ -143,7 +141,9 @@ def summarize_ledger(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "opens": len(opens),
         "closes": len(closes),
         "realized_pnl": sum(closed_pnls),
-        "closed_win_rate_pct": (sum(1 for pnl in closed_pnls if pnl > 0) / len(closed_pnls) * 100) if closed_pnls else 0.0,
+        "closed_win_rate_pct": (sum(1 for pnl in closed_pnls if pnl > 0) / len(closed_pnls) * 100)
+        if closed_pnls
+        else 0.0,
         "avg_closed_pnl": (sum(closed_pnls) / len(closed_pnls)) if closed_pnls else 0.0,
         "total_cost": sum(row["total_cost"] for row in rows),
         "by_symbol": {key: dict(value) for key, value in sorted(by_symbol.items())},

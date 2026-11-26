@@ -2,35 +2,28 @@
 layer depth expansion, and symbol scoring."""
 
 from pathlib import Path
-import sys
-from dataclasses import replace
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-
-from src.rayn_strategy.backtest import Candle
-from src.rayn_strategy.config import (
-    CircuitBreakerConfig,
-    PortfolioConfig,
-    RaynConfig,
-    RiskConfig,
+from rayn_strategy.backtest import Candle
+from rayn_strategy.config import (
     StrategyConfig,
 )
-from src.rayn_strategy.grid import (
+from rayn_strategy.grid import (
     BoundedGridConfig,
     GridLayer,
     GridPosition,
     effective_layer_step_pct,
     should_add_grid_layer,
 )
-from src.rayn_strategy.regime import MarketRegime, detect_market_regime
-from src.rayn_strategy.signals import entry_signal
-from src.rayn_strategy.symbol_scorer import SymbolScore, score_symbols, select_top_symbols
+from rayn_strategy.regime import detect_market_regime
+from rayn_strategy.signals import entry_signal
+from rayn_strategy.symbol_scorer import score_symbols, select_top_symbols
 
+ROOT = Path(__file__).resolve().parents[1]
 
 # --------------------------------------------------------------------------
 # Volume-confirmed entries
 # --------------------------------------------------------------------------
+
 
 def _make_breakout_config(**overrides) -> StrategyConfig:
     base = dict(
@@ -133,6 +126,7 @@ def test_entry_signal_works_without_volumes_parameter() -> None:
 # Multi-dimensional regime detection
 # --------------------------------------------------------------------------
 
+
 def test_regime_bullish_uptrend() -> None:
     # Short MA above long MA (bullish)
     closes = list(range(1, 300))  # strongly uptrending
@@ -224,6 +218,7 @@ def test_regime_extreme_volatility() -> None:
 # Layer depth expansion
 # --------------------------------------------------------------------------
 
+
 def test_layer_step_expansion_increases_with_depth() -> None:
     config = BoundedGridConfig(
         max_rescue_layers=5,
@@ -297,6 +292,7 @@ def test_deeper_layers_require_wider_drop() -> None:
 # Symbol scoring
 # --------------------------------------------------------------------------
 
+
 def _make_candles(n: int, base_close: float, trend: float = 0.0, volume: float = 100.0) -> list[Candle]:
     return [
         Candle(
@@ -355,6 +351,7 @@ def test_symbol_scoring_handles_empty_candles() -> None:
 # Config backward compatibility
 # --------------------------------------------------------------------------
 
+
 def test_config_loads_with_new_volume_params() -> None:
     """Ensure new StrategyConfig params have safe defaults."""
     config = StrategyConfig(
@@ -382,7 +379,8 @@ def test_config_loads_with_new_volume_params() -> None:
 
 def test_config_loads_optimized_v3_toml() -> None:
     """Verify the V3 config file loads without errors."""
-    from src.rayn_strategy.config import load_config
+    from rayn_strategy.config import load_config
+
     config = load_config(Path(ROOT / "config.rayn-optimized-v3.toml"))
     assert config.strategy.breakout_volume_lookback == 20
     assert config.strategy.breakout_volume_multiplier == 1.2

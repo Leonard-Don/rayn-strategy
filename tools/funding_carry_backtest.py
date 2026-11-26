@@ -44,7 +44,7 @@ Run:  python3 tools/funding_carry_backtest.py
 from __future__ import annotations
 
 import csv
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -64,8 +64,8 @@ def _parse(ts: str) -> datetime:
         s = s[:-1] + "+00:00"
     dt = datetime.fromisoformat(s)
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC)
 
 
 def load_funding(path: Path) -> list[tuple[datetime, float]]:
@@ -129,11 +129,11 @@ def sharpe(rates: list[float]) -> float:
         return 0.0
     mean = sum(rates) / n
     var = sum((r - mean) ** 2 for r in rates) / (n - 1)
-    std = var ** 0.5
+    std = var**0.5
     if std == 0:
         return 0.0
     ann_mean = mean * SETTLEMENTS_PER_YEAR
-    ann_std = std * (SETTLEMENTS_PER_YEAR ** 0.5)
+    ann_std = std * (SETTLEMENTS_PER_YEAR**0.5)
     return ann_mean / ann_std
 
 
@@ -147,9 +147,7 @@ def pct_positive(rates: list[float]) -> float:
 # main
 # --------------------------------------------------------------------------- #
 def main() -> int:
-    if not FUNDING_DIR.is_dir() or not all(
-        (FUNDING_DIR / f"{s}.csv").exists() for s in SYMBOLS
-    ):
+    if not FUNDING_DIR.is_dir() or not all((FUNDING_DIR / f"{s}.csv").exists() for s in SYMBOLS):
         print("ERROR: missing data_funding/{SYMBOL}.csv for", SYMBOLS)
         return 1
 
@@ -175,14 +173,9 @@ def main() -> int:
         by_year = {}
         for ts, r in rows:
             by_year.setdefault(str(ts.year), []).append(r)
-        yr_cells = "".join(
-            f"{annualized_yield(by_year.get(y, [])):>+9.1%}" for y in years
-        )
+        yr_cells = "".join(f"{annualized_yield(by_year.get(y, [])):>+9.1%}" for y in years)
         dd, dd_len = worst_drawdown(all_rates)
-        print(
-            f"{s:9}{overall:>+10.2%}{yr_cells}"
-            f"{pct_positive(all_rates):>8.0%}{dd:>+10.2%}{dd_len:>7d}"
-        )
+        print(f"{s:9}{overall:>+10.2%}{yr_cells}{pct_positive(all_rates):>8.0%}{dd:>+10.2%}{dd_len:>7d}")
     print("  worstDD = worst peak-to-trough of the cumulative-carry curve")
     print("            (total funding given back during the worst negative stretch,")
     print("            as a fraction of perp notional); DDlen = its length in 8h steps.")
@@ -219,9 +212,7 @@ def main() -> int:
         per_symbol_slot[s] = acc
 
     all_slots = sorted(set().union(*[set(d) for d in per_symbol_slot.values()]))
-    common_slots = [
-        k for k in all_slots if all(k in per_symbol_slot[s] for s in SYMBOLS)
-    ]
+    common_slots = [k for k in all_slots if all(k in per_symbol_slot[s] for s in SYMBOLS)]
 
     port_rates: list[float] = []
     port_by_year: dict[str, list[float]] = {}
@@ -235,14 +226,13 @@ def main() -> int:
     print("=" * 74)
     print(f"  common 8h slots (all 4 symbols present): {len(common_slots)}")
     span_days = (common_slots[-1] - common_slots[0]).days if common_slots else 0
-    print(f"  span: {common_slots[0].date()} -> {common_slots[-1].date()}  "
-          f"(~{span_days/365.25:.1f} yr)")
+    print(f"  span: {common_slots[0].date()} -> {common_slots[-1].date()}  (~{span_days / 365.25:.1f} yr)")
     print()
-    print(f"  annualized yield (gross, on perp notional): "
-          f"{annualized_yield(port_rates):>+8.2%}")
+    print(f"  annualized yield (gross, on perp notional): {annualized_yield(port_rates):>+8.2%}")
     pdd, pdd_len = worst_drawdown(port_rates)
-    print(f"  worst drawdown of cumulative carry:         {pdd:>+8.2%}  "
-          f"({pdd_len} settlements ~= {pdd_len/3:.0f} days)")
+    print(
+        f"  worst drawdown of cumulative carry:         {pdd:>+8.2%}  ({pdd_len} settlements ~= {pdd_len / 3:.0f} days)"
+    )
     print(f"  rough Sharpe (ann mean / ann std of 8h carry): {sharpe(port_rates):>6.2f}")
     print(f"  fraction of 8h slots with positive carry:   {pct_positive(port_rates):>8.0%}")
 
@@ -251,8 +241,7 @@ def main() -> int:
     for y in years:
         yr = port_by_year.get(y, [])
         ydd, _ = worst_drawdown(yr)
-        print(f"  {y:6}{annualized_yield(yr):>+12.2%}{ydd:>+11.2%}"
-              f"{sharpe(yr):>9.2f}{pct_positive(yr):>7.0%}")
+        print(f"  {y:6}{annualized_yield(yr):>+12.2%}{ydd:>+11.2%}{sharpe(yr):>9.2f}{pct_positive(yr):>7.0%}")
 
     # ---- honesty footer ---------------------------------------------------- #
     print("\n" + "-" * 74)

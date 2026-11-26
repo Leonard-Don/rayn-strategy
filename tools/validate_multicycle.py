@@ -11,17 +11,14 @@ Key question: does the regime filter keep it out of the 2022 bear (flat, not ble
 
 from __future__ import annotations
 
-import sys
 from dataclasses import replace
 from pathlib import Path
 
+from rayn_strategy.backtest import load_candles
+from rayn_strategy.config import load_config, load_raw_config
+from rayn_strategy.momentum import MomentumConfig, MomentumEngine
+
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
-
-from src.rayn_strategy.config import load_config, load_raw_config
-from src.rayn_strategy.backtest import load_candles
-from src.rayn_strategy.momentum import MomentumConfig, MomentumEngine
-
 SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT"]
 DATA = {s: load_candles(ROOT / "data_multicycle" / f"{s}.csv") for s in SYMBOLS}
 CFG = load_config(ROOT / "config.rayn-momentum.toml")
@@ -39,8 +36,15 @@ CYCLES = [
 
 
 def run(es, re):
-    return MomentumEngine(config=CFG, mom=MOM, data_dir=ROOT / "data_multicycle",
-                          symbols=SYMBOLS, preloaded_data=DATA, entry_start=es, run_end=re).run()
+    return MomentumEngine(
+        config=CFG,
+        mom=MOM,
+        data_dir=ROOT / "data_multicycle",
+        symbols=SYMBOLS,
+        preloaded_data=DATA,
+        entry_start=es,
+        run_end=re,
+    ).run()
 
 
 def row(label, r):
@@ -49,11 +53,12 @@ def row(label, r):
     los = [t for t in r.trades if t.pnl <= 0]
     aw = sum(t.pnl for t in w) / len(w) if w else 0.0
     al = sum(t.pnl for t in los) / len(los) if los else 0.0
-    exposure = (sum(1 for p in r.equity_curve if p.open_notional > 0) / len(r.equity_curve)
-                if r.equity_curve else 0.0)
-    print(f"{label:24} ROI={roi:+8.1%}  maxDD={r.max_drawdown_pct:5.1%}  trades={len(r.trades):4}  "
-          f"win%={(len(w)/len(r.trades) if r.trades else 0):4.0%}  W/L={(aw/-al if al else 0):4.1f}  "
-          f"in-market={exposure:4.0%}")
+    exposure = sum(1 for p in r.equity_curve if p.open_notional > 0) / len(r.equity_curve) if r.equity_curve else 0.0
+    print(
+        f"{label:24} ROI={roi:+8.1%}  maxDD={r.max_drawdown_pct:5.1%}  trades={len(r.trades):4}  "
+        f"win%={(len(w) / len(r.trades) if r.trades else 0):4.0%}  W/L={(aw / -al if al else 0):4.1f}  "
+        f"in-market={exposure:4.0%}"
+    )
 
 
 def main() -> int:

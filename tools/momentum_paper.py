@@ -14,7 +14,8 @@ Usage:
       --data data_multicycle --symbols BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT --demo 720
 
   # recent-data tick: step the latest bar and persist local state
-  python3 tools/momentum_paper.py --config ... --data <fresh> --symbols ... --state reports/runtime/momentum-paper-state.json --tick
+  python3 tools/momentum_paper.py --config ... --data <fresh> --symbols ... \
+      --state reports/runtime/momentum-paper-state.json --tick
 
 For a monitoring loop: refresh klines into --data, then run with --tick.
 """
@@ -24,23 +25,21 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
+from rayn_strategy.backtest import load_candles
+from rayn_strategy.config import load_config, load_raw_config
+from rayn_strategy.momentum import MomentumConfig, MomentumEngine, MomPosition, atr_pct
 
-from src.rayn_strategy.backtest import load_candles
-from src.rayn_strategy.config import load_config, load_raw_config
-from src.rayn_strategy.momentum import MomentumConfig, MomentumEngine, MomPosition, atr_pct
+ROOT = Path(__file__).resolve().parent.parent
 
 
 @dataclass
 class Intent:
-    action: str       # "OPEN" / "CLOSE"
+    action: str  # "OPEN" / "CLOSE"
     symbol: str
-    side: str         # "BUY" / "SELL"
+    side: str  # "BUY" / "SELL"
     notional: float
     price: float
     stop: float | None
@@ -71,18 +70,23 @@ class MomentumPaper:
 
     # ---- state persistence ----
     def to_dict(self) -> dict:
-        return {"cash": self.cash, "peak": self.peak, "halted": self.halted,
-                "last_timestamp": self.last_timestamp,
-                "positions": {s: asdict(p) for s, p in self.positions.items()}}
+        return {
+            "cash": self.cash,
+            "peak": self.peak,
+            "halted": self.halted,
+            "last_timestamp": self.last_timestamp,
+            "positions": {s: asdict(p) for s, p in self.positions.items()},
+        }
 
     def load(self, d: dict) -> None:
-        self.cash = d["cash"]; self.peak = d["peak"]; self.halted = d.get("halted", False)
+        self.cash = d["cash"]
+        self.peak = d["peak"]
+        self.halted = d.get("halted", False)
         self.last_timestamp = d.get("last_timestamp")
         self.positions = {s: MomPosition(**p) for s, p in d.get("positions", {}).items()}
 
     def _marked(self, prices: dict[str, float]) -> float:
-        u = sum(p.side * p.notional * ((prices[s] / p.entry_price) - 1.0)
-                for s, p in self.positions.items())
+        u = sum(p.side * p.notional * ((prices[s] / p.entry_price) - 1.0) for s, p in self.positions.items())
         return self.cash + u
 
     def _close(self, p: MomPosition, price: float, reason: str) -> Intent:
@@ -90,12 +94,19 @@ class MomentumPaper:
         fee, slippage, cost = _cost_components(p.notional, self.config)
         cash_delta = gross - cost
         self.cash += cash_delta
-        return Intent("CLOSE", p.symbol, "SELL" if p.side > 0 else "BUY",
-                      p.notional, price, None, reason,
-                      fee_cost=fee,
-                      slippage_cost=slippage,
-                      realized_pnl=gross - 2 * cost,
-                      cash_delta=cash_delta)
+        return Intent(
+            "CLOSE",
+            p.symbol,
+            "SELL" if p.side > 0 else "BUY",
+            p.notional,
+            price,
+            None,
+            reason,
+            fee_cost=fee,
+            slippage_cost=slippage,
+            realized_pnl=gross - 2 * cost,
+            cash_delta=cash_delta,
+        )
 
     def _short_rebound_filter_blocks(self, hist: dict[str, dict]) -> bool:
         bars = self.mom.short_rebound_filter_bars
@@ -216,13 +227,22 @@ class MomentumPaper:
             self.cash -= cost
             stop = price * (1.0 - stop_dist) if side > 0 else price * (1.0 + stop_dist)
             self.positions[s] = MomPosition(s, hist[s]["bar"]["ts"], price, notional, side, stop, price)
-            intents.append(Intent("OPEN", s, "BUY" if side > 0 else "SELL", notional, price, stop,
-                                  "momentum_long" if side > 0 else "momentum_short",
-                                  fee_cost=fee,
-                                  slippage_cost=slippage,
-                                  cash_delta=-cost,
-                                  quality_score=quality.score,
-                                  risk_multiplier=quality.risk_multiplier))
+            intents.append(
+                Intent(
+                    "OPEN",
+                    s,
+                    "BUY" if side > 0 else "SELL",
+                    notional,
+                    price,
+                    stop,
+                    "momentum_long" if side > 0 else "momentum_short",
+                    fee_cost=fee,
+                    slippage_cost=slippage,
+                    cash_delta=-cost,
+                    quality_score=quality.score,
+                    risk_multiplier=quality.risk_multiplier,
+                )
+            )
         self.last_timestamp = timestamp
         return intents
 
@@ -239,12 +259,20 @@ def _hist_upto(rows_by_sym, symbols, i, tail: int | None = None):
     lo = max(0, i + 1 - tail) if tail else 0
     h = {}
     for s in symbols:
-        rows = rows_by_sym[s][lo: i + 1]
+        rows = rows_by_sym[s][lo : i + 1]
         bar = rows[-1]
-        h[s] = {"closes": [r.close for r in rows], "highs": [r.high for r in rows],
-                "lows": [r.low for r in rows],
-                "bar": {"ts": bar.timestamp, "open": bar.open, "high": bar.high,
-                        "low": bar.low, "close": bar.close}}
+        h[s] = {
+            "closes": [r.close for r in rows],
+            "highs": [r.high for r in rows],
+            "lows": [r.low for r in rows],
+            "bar": {
+                "ts": bar.timestamp,
+                "open": bar.open,
+                "high": bar.high,
+                "low": bar.low,
+                "close": bar.close,
+            },
+        }
     return h
 
 
@@ -261,8 +289,10 @@ def _catch_up_start_index(ts: list[str], last_timestamp: str | None, warm: int) 
 
 def _print_intent(timestamp: str, intent: Intent) -> None:
     stop = f" stop={intent.stop}" if intent.stop is not None else ""
-    print(f"  {timestamp[:16]} {intent.action} {intent.side} {intent.symbol} "
-          f"${intent.notional:.2f} @ {intent.price:.4g}{stop} [{intent.reason}]")
+    print(
+        f"  {timestamp[:16]} {intent.action} {intent.side} {intent.symbol} "
+        f"${intent.notional:.2f} @ {intent.price:.4g}{stop} [{intent.reason}]"
+    )
 
 
 def append_intent_ledger(
@@ -361,23 +391,29 @@ def main() -> int:
     if args.demo:
         warm = max(mom.trend_ma_bars, mom.breakout_bars, mom.momentum_bars) + 1
         start = max(warm, n - args.demo)
-        print(f"# PAPER demo replay — {symbols}, bars {start}..{n-1} ({n-1-start} bars), config {args.config}")
+        print(f"# PAPER demo replay — {symbols}, bars {start}..{n - 1} ({n - 1 - start} bars), config {args.config}")
         opened = closed = 0
         for i in range(start, n):
             for it in paper.step(symbols, _hist_upto(rows, symbols, i, tail=300)):
                 tag = "OPEN " if it.action == "OPEN" else "CLOSE"
                 stop = f" stop {it.stop:.4g}" if it.stop else ""
-                print(f"  {ts[i][:16]} {tag} {it.side:4} {it.symbol:8} ${it.notional:8.2f} @ {it.price:.4g}"
-                      f"{stop}  [{it.reason}]")
-                opened += it.action == "OPEN"; closed += it.action == "CLOSE"
+                print(
+                    f"  {ts[i][:16]} {tag} {it.side:4} {it.symbol:8} ${it.notional:8.2f} @ {it.price:.4g}"
+                    f"{stop}  [{it.reason}]"
+                )
+                opened += it.action == "OPEN"
+                closed += it.action == "CLOSE"
         marks = {s: rows[s][n - 1].close for s in symbols}
         eq = paper._marked(marks)
-        print(f"\n# paper book now: equity ${eq:.2f} ({(eq/cfg.portfolio.initial_equity-1):+.1%}), "
-              f"open {len(paper.positions)}, opened {opened}, closed {closed}, halted={paper.halted}")
+        print(
+            f"\n# paper book now: equity ${eq:.2f} ({(eq / cfg.portfolio.initial_equity - 1):+.1%}), "
+            f"open {len(paper.positions)}, opened {opened}, closed {closed}, halted={paper.halted}"
+        )
         for s, p in paper.positions.items():
             upnl = p.side * p.notional * ((marks[s] / p.entry_price) - 1.0)
-            print(f"    holding {s}: ${p.notional:.2f} @ {p.entry_price:.4g}, stop {p.stop_price:.4g}, "
-                  f"uPnL ${upnl:+.2f}")
+            print(
+                f"    holding {s}: ${p.notional:.2f} @ {p.entry_price:.4g}, stop {p.stop_price:.4g}, uPnL ${upnl:+.2f}"
+            )
         return 0
 
     if args.tick:
@@ -413,8 +449,7 @@ def main() -> int:
         if first_ts is None:
             print(f"# PAPER catch-up — 0 bar(s), 0 intent(s); already current at {paper.last_timestamp}")
         else:
-            print(f"# PAPER catch-up {first_ts[:16]}..{ts[-1][:16]} — "
-                  f"{processed} bar(s), {len(all_intents)} intent(s)")
+            print(f"# PAPER catch-up {first_ts[:16]}..{ts[-1][:16]} — {processed} bar(s), {len(all_intents)} intent(s)")
         if not all_intents:
             print("  (no action — hold)")
         if state_path:

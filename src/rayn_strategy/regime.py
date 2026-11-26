@@ -15,7 +15,6 @@ from dataclasses import dataclass
 
 from .indicators import atr_pct, sma
 
-
 # ---------------------------------------------------------------------------
 # Data model
 # ---------------------------------------------------------------------------
@@ -210,32 +209,22 @@ def detect_market_regime(
         A frozen :class:`MarketRegime` instance.
     """
     # --- Trend ---
-    trend_label, trend_component = _detect_trend(
-        closes, short_ma_bars, long_ma_bars
-    )
+    trend_label, trend_component = _detect_trend(closes, short_ma_bars, long_ma_bars)
 
     # --- Volatility ---
     if highs is not None and lows is not None:
-        vol_label, vol_component = _detect_volatility(
-            highs, lows, closes, atr_short_bars, atr_long_bars
-        )
+        vol_label, vol_component = _detect_volatility(highs, lows, closes, atr_short_bars, atr_long_bars)
     else:
         vol_label, vol_component = "normal", 0.0
 
     # --- Volume ---
     if volumes is not None:
-        volume_label, volume_component = _detect_volume_trend(
-            volumes, volume_short_bars, volume_long_bars
-        )
+        volume_label, volume_component = _detect_volume_trend(volumes, volume_short_bars, volume_long_bars)
     else:
         volume_label, volume_component = "normal", 0.0
 
     # --- Composite score ---
-    score = (
-        trend_component * 0.5
-        + vol_component * 0.25
-        + volume_component * 0.25
-    )
+    score = trend_component * 0.5 + vol_component * 0.25 + volume_component * 0.25
     score = max(-1.0, min(1.0, score))
 
     # --- Entry / position-scale rules ---

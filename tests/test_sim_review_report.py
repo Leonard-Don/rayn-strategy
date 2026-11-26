@@ -1,13 +1,14 @@
 import csv
 from pathlib import Path
-import sys
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-
-from tools.short_filter_compare import compare_filter_rows, render_filter_report, _parse_periods
+from tools.entry_quality_compare import (
+    compare_quality_rows,
+    parse_quality_variants,
+    render_quality_report,
+)
+from tools.short_filter_compare import _parse_periods, compare_filter_rows, render_filter_report
 from tools.sim_review_report import (
     load_equity_rows,
     load_ledger_rows,
@@ -15,7 +16,6 @@ from tools.sim_review_report import (
     summarize_equity,
     summarize_ledger,
 )
-from tools.entry_quality_compare import compare_quality_rows, parse_quality_variants, render_quality_report
 
 
 def _write_csv(path: Path, fields: list[str], rows: list[dict[str, object]]) -> None:

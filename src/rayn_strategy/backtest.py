@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from pathlib import Path
 import csv
-from datetime import datetime, timezone
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from pathlib import Path
 
 from .config import RaynConfig
 from .risk import Position, RiskManager
@@ -91,19 +91,11 @@ class BacktestResult:
 
     def _hidden_risk_lines(self) -> list[str]:
         max_notional_pct = max(
-            (
-                point.open_notional / point.marked_equity
-                for point in self.equity_curve
-                if point.marked_equity > 0
-            ),
+            (point.open_notional / point.marked_equity for point in self.equity_curve if point.marked_equity > 0),
             default=0.0,
         )
         max_margin_pct = max(
-            (
-                point.open_margin / point.marked_equity
-                for point in self.equity_curve
-                if point.marked_equity > 0
-            ),
+            (point.open_margin / point.marked_equity for point in self.equity_curve if point.marked_equity > 0),
             default=0.0,
         )
         max_floating_loss = min((point.floating_pnl for point in self.equity_curve), default=0.0)
@@ -149,9 +141,7 @@ class BacktestResult:
         for key, stats in sorted(grouped.items()):
             trades = int(stats["trades"])
             win_rate = stats["wins"] / trades if trades else 0.0
-            lines.append(
-                f"  {key}: trades={trades} pnl={stats['pnl']:.2f} win_rate={win_rate:.2%}"
-            )
+            lines.append(f"  {key}: trades={trades} pnl={stats['pnl']:.2f} win_rate={win_rate:.2%}")
         return lines
 
 
@@ -183,10 +173,7 @@ class BacktestEngine:
         if not timestamps:
             raise ValueError("no overlapping timestamps across symbol data")
 
-        by_time = {
-            symbol: {row.timestamp: row for row in rows}
-            for symbol, rows in data.items()
-        }
+        by_time = {symbol: {row.timestamp: row for row in rows} for symbol, rows in data.items()}
         closes: dict[str, list[float]] = {symbol: [] for symbol in self.symbols}
         highs: dict[str, list[float]] = {symbol: [] for symbol in self.symbols}
         lows: dict[str, list[float]] = {symbol: [] for symbol in self.symbols}
@@ -225,8 +212,7 @@ class BacktestEngine:
                     high_price=candle.high,
                     low_price=candle.low,
                     bars_held=position.bars_held,
-                    circuit_breaker_active=circuit_active
-                    and self.config.circuit_breaker.close_positions_on_trigger,
+                    circuit_breaker_active=circuit_active and self.config.circuit_breaker.close_positions_on_trigger,
                     config=self.config.strategy,
                 )
                 if signal.action == "sell":
@@ -340,9 +326,7 @@ class BacktestEngine:
     def _entry_window_open(self, timestamp: str) -> bool:
         if self.entry_start and timestamp < self.entry_start:
             return False
-        if self.entry_end and timestamp >= self.entry_end:
-            return False
-        return True
+        return not (self.entry_end and timestamp >= self.entry_end)
 
     def _exit_price(self, entry_price: float, close_price: float, reason: str) -> float:
         if reason == "stop_loss":
@@ -418,10 +402,10 @@ def normalize_timestamp(value: str) -> str:
         number = int(item)
         if number > 10_000_000_000:
             number = number // 1000
-        return datetime.fromtimestamp(number, tz=timezone.utc).isoformat()
+        return datetime.fromtimestamp(number, tz=UTC).isoformat()
     if item.endswith("Z"):
         item = item[:-1] + "+00:00"
     parsed = datetime.fromisoformat(item)
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(timezone.utc).isoformat()
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC).isoformat()
