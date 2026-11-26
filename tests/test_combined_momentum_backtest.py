@@ -1,13 +1,14 @@
 from pathlib import Path
-import sys
+
+from rayn_strategy.config import load_config
+from rayn_strategy.momentum import MomentumConfig
+from tools.combined_momentum_backtest import (
+    CombinedMomentumEngine,
+    DynamicShortRiskConfig,
+    short_risk_multiplier,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-
-from tools.combined_momentum_backtest import DynamicShortRiskConfig, short_risk_multiplier
-from tools.combined_momentum_backtest import CombinedMomentumEngine
-from src.rayn_strategy.config import load_config
-from src.rayn_strategy.momentum import MomentumConfig
 
 
 def test_dynamic_short_risk_scales_only_in_deep_bear_with_drawdown_room():

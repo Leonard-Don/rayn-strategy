@@ -6,22 +6,18 @@ validated backtest."""
 
 from dataclasses import replace
 from pathlib import Path
-import sys
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-
-from src.rayn_strategy.config import load_config, load_raw_config
-from src.rayn_strategy.backtest import Candle
-from src.rayn_strategy.market_filter import (
+from rayn_strategy.backtest import Candle
+from rayn_strategy.config import load_config, load_raw_config
+from rayn_strategy.market_filter import (
     ShortCandidateFilter,
     breadth_above_ma,
     long_breadth_allows_entry,
     short_candidate_allows_entry,
 )
-from src.rayn_strategy.momentum import MomentumConfig, MomentumEngine, entry_quality_risk_multiplier
+from rayn_strategy.momentum import MomentumConfig, MomentumEngine, entry_quality_risk_multiplier
 from tools.momentum_paper import (
     Intent,
     MomentumPaper,
@@ -29,6 +25,8 @@ from tools.momentum_paper import (
     _hist_upto,
     append_intent_ledger,
 )
+
+ROOT = Path(__file__).resolve().parents[1]
 
 SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT"]
 N = 80
@@ -91,8 +89,9 @@ def test_paper_matches_engine():
     n = len(next(iter(rows.values())))
 
     # engine over the slice
-    res = MomentumEngine(config=cfg, mom=mom, data_dir=ROOT / "data_multicycle",
-                         symbols=SYMBOLS, preloaded_data=rows).run()
+    res = MomentumEngine(
+        config=cfg, mom=mom, data_dir=ROOT / "data_multicycle", symbols=SYMBOLS, preloaded_data=rows
+    ).run()
     engine_closed = [(t.symbol, t.exit_reason) for t in res.trades if t.exit_reason != "end_of_test"]
     assert engine_closed
 
@@ -107,14 +106,16 @@ def test_paper_matches_engine():
 
     # same sequence of closed trades (entries/exits/reasons line up)
     assert paper_closed == engine_closed, (
-        f"trade sequences differ: paper {len(paper_closed)} vs engine {len(engine_closed)}")
+        f"trade sequences differ: paper {len(paper_closed)} vs engine {len(engine_closed)}"
+    )
 
     # same final equity after closing paper's leftover opens at the final close (as the engine does)
     finals = {s: rows[s][n - 1].close for s in SYMBOLS}
     for s, p in list(paper.positions.items()):
         paper._close(p, finals[s], "end_of_test")
     assert abs(paper.cash - res.final_equity) < 1e-6, (
-        f"final equity differs: paper {paper.cash} vs engine {res.final_equity}")
+        f"final equity differs: paper {paper.cash} vs engine {res.final_equity}"
+    )
 
 
 def test_account_halt_flattens_and_stops():
@@ -124,11 +125,16 @@ def test_account_halt_flattens_and_stops():
     paper = MomentumPaper(cfg, mom)
     # Open position large enough that a held -17% mark = >20% account DD, with the
     # stop (70) and liquidation (~67) BOTH untouched, so only the account halt can fire.
-    from src.rayn_strategy.momentum import MomPosition
+    from rayn_strategy.momentum import MomPosition
+
     paper.positions["BTCUSDT"] = MomPosition("BTCUSDT", "t0", 100.0, 600.0, 1, 70.0, 100.0)
     hist = {
-        "BTCUSDT": {"closes": [100.0] * 250, "highs": [100.0] * 250, "lows": [100.0] * 250,
-                    "bar": {"ts": "t1", "open": 83.0, "high": 85.0, "low": 83.0, "close": 83.0}},
+        "BTCUSDT": {
+            "closes": [100.0] * 250,
+            "highs": [100.0] * 250,
+            "lows": [100.0] * 250,
+            "bar": {"ts": "t1", "open": 83.0, "high": 85.0, "low": 83.0, "close": 83.0},
+        },
     }
     intents = paper.step(["BTCUSDT"], hist)
     assert paper.halted is True
@@ -140,7 +146,8 @@ def test_paper_tick_is_idempotent_for_duplicate_timestamp():
     cfg = load_config(ROOT / "config.rayn-momentum-paper.toml")
     mom = _load_momentum_config("config.rayn-momentum-paper.toml")
     paper = MomentumPaper(cfg, mom)
-    from src.rayn_strategy.momentum import MomPosition
+    from rayn_strategy.momentum import MomPosition
+
     paper.positions["BTCUSDT"] = MomPosition("BTCUSDT", "t0", 100.0, 50.0, 1, 70.0, 100.0)
     hist = {
         "BTCUSDT": {
@@ -163,7 +170,8 @@ def test_paper_tick_ignores_older_timestamp_after_state_load():
     cfg = load_config(ROOT / "config.rayn-momentum-paper.toml")
     mom = _load_momentum_config("config.rayn-momentum-paper.toml")
     paper = MomentumPaper(cfg, mom)
-    from src.rayn_strategy.momentum import MomPosition
+    from rayn_strategy.momentum import MomPosition
+
     paper.positions["BTCUSDT"] = MomPosition("BTCUSDT", "t0", 100.0, 50.0, 1, 70.0, 100.0)
     paper.last_timestamp = "t2"
     hist = {
@@ -316,12 +324,11 @@ def test_engine_short_rebound_filter_blocks_core_rebound():
     engine = MomentumEngine(cfg, mom, ROOT, ["BTCUSDT", "ETHUSDT", "SOLUSDT"])
     closes = [100.0, 99.0, 98.0, 98.0, 98.0, 90.0, 91.0, 94.0, 93.0, 92.8]
 
-    assert engine._short_rebound_filter_blocks(
-        {"BTCUSDT": closes, "ETHUSDT": closes, "SOLUSDT": closes}
-    ) is True
-    assert engine._short_rebound_filter_blocks(
-        {"BTCUSDT": closes, "ETHUSDT": closes, "SOLUSDT": [100.0] * len(closes)}
-    ) is False
+    assert engine._short_rebound_filter_blocks({"BTCUSDT": closes, "ETHUSDT": closes, "SOLUSDT": closes}) is True
+    assert (
+        engine._short_rebound_filter_blocks({"BTCUSDT": closes, "ETHUSDT": closes, "SOLUSDT": [100.0] * len(closes)})
+        is False
+    )
 
 
 def test_entry_quality_scores_stronger_long_breakout_higher():
@@ -402,9 +409,7 @@ def test_trade_ledger_persists_costs_and_realized_pnl(tmp_path):
         "slippage_cost,total_cost,realized_pnl,cash_delta,quality_score,risk_multiplier,equity_after"
     )
     assert "OPEN,BTCUSDT,SELL,100.00000000,100.00000000,105.00000000,momentum_short" in rows[1]
-    assert rows[1].endswith(
-        "0.05000000,0.07000000,0.12000000,,-0.12000000,0.72000000,1.10000000,109.64000000"
-    )
+    assert rows[1].endswith("0.05000000,0.07000000,0.12000000,,-0.12000000,0.72000000,1.10000000,109.64000000")
     assert "CLOSE,BTCUSDT,BUY,100.00000000,90.00000000,,trail_stop" in rows[2]
     assert rows[2].endswith("0.05000000,0.07000000,0.12000000,9.76000000,9.88000000,,,109.64000000")
 

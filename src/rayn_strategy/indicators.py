@@ -31,7 +31,7 @@ def average_range_pct(
         return None
 
     total = 0.0
-    for high, low, close in zip(highs[-length:], lows[-length:], closes[-length:]):
+    for high, low, close in zip(highs[-length:], lows[-length:], closes[-length:], strict=False):
         if close <= 0:
             continue
         total += (high - low) / close
@@ -49,7 +49,7 @@ def atr_pct(
     if len(highs) < length or len(lows) < length or len(closes) < length:
         return None
     total = 0.0
-    for high, low, close in zip(highs[-length:], lows[-length:], closes[-length:]):
+    for high, low, close in zip(highs[-length:], lows[-length:], closes[-length:], strict=False):
         if close <= 0:
             continue
         total += (high - low) / close
@@ -84,7 +84,7 @@ def rsi(values: list[float], length: int) -> float | None:
     gains = 0.0
     losses = 0.0
     window = values[-(length + 1) :]
-    for prev, curr in zip(window, window[1:]):
+    for prev, curr in zip(window, window[1:], strict=False):
         change = curr - prev
         if change >= 0:
             gains += change

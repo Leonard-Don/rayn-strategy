@@ -21,11 +21,10 @@ from .exchange_filters import (
     normalize_quantity,
     symbol_feasibility,
 )
+from .indicators import atr_pct, lower_wick_pct, volume_spike
 from .probation import TradeLike, trade_layers
 from .risk import RiskManager
 from .signals import entry_signal, market_regime_filter_reason
-from .indicators import atr_pct, lower_wick_pct, volume_spike
-
 
 MAINTENANCE_MARGIN_PCT = 0.005
 
@@ -179,7 +178,7 @@ class BoundedGridEngine:
                 and not quote_haircut_applied
                 and timestamp >= self.quote_haircut_time
             ):
-                cash_equity *= (1.0 - self.quote_haircut_pct)
+                cash_equity *= 1.0 - self.quote_haircut_pct
                 quote_haircut_applied = True
             for symbol in self.symbols:
                 candle = by_time[symbol][timestamp]
@@ -248,9 +247,7 @@ class BoundedGridEngine:
             self.risk.update_account_limits(risk_state, marked_equity)
             max_drawdown = max(max_drawdown, current_drawdown(marked_equity, risk_state.peak_equity))
             if risk_state.halted:
-                equity_curve.append(
-                    self._equity_point(timestamp, cash_equity, marked_equity, positions, mark_prices)
-                )
+                equity_curve.append(self._equity_point(timestamp, cash_equity, marked_equity, positions, mark_prices))
                 break
 
             if not circuit_active:
@@ -269,9 +266,7 @@ class BoundedGridEngine:
                 marked_equity = self._marked_equity(cash_equity, positions, mark_prices)
                 risk_state.peak_equity = max(risk_state.peak_equity, marked_equity)
                 max_drawdown = max(max_drawdown, current_drawdown(marked_equity, risk_state.peak_equity))
-                equity_curve.append(
-                    self._equity_point(timestamp, cash_equity, marked_equity, positions, mark_prices)
-                )
+                equity_curve.append(self._equity_point(timestamp, cash_equity, marked_equity, positions, mark_prices))
                 continue
 
             regime_block = market_regime_filter_reason(closes[benchmark], self.config.strategy)
@@ -282,9 +277,7 @@ class BoundedGridEngine:
                 marked_equity = self._marked_equity(cash_equity, positions, mark_prices)
                 risk_state.peak_equity = max(risk_state.peak_equity, marked_equity)
                 max_drawdown = max(max_drawdown, current_drawdown(marked_equity, risk_state.peak_equity))
-                equity_curve.append(
-                    self._equity_point(timestamp, cash_equity, marked_equity, positions, mark_prices)
-                )
+                equity_curve.append(self._equity_point(timestamp, cash_equity, marked_equity, positions, mark_prices))
                 continue
 
             loss_cooldown_active = self.risk.loss_cooldown_active(risk_state)
@@ -346,9 +339,7 @@ class BoundedGridEngine:
             marked_equity = self._marked_equity(cash_equity, positions, mark_prices)
             risk_state.peak_equity = max(risk_state.peak_equity, marked_equity)
             max_drawdown = max(max_drawdown, current_drawdown(marked_equity, risk_state.peak_equity))
-            equity_curve.append(
-                self._equity_point(timestamp, cash_equity, marked_equity, positions, mark_prices)
-            )
+            equity_curve.append(self._equity_point(timestamp, cash_equity, marked_equity, positions, mark_prices))
 
         final_prices = {symbol: by_time[symbol][last_timestamp].close for symbol in self.symbols}
         for symbol, position in list(positions.items()):
@@ -467,9 +458,7 @@ class BoundedGridEngine:
         total_notional = sum(position.notional for position in positions.values())
         if (symbol_notional + layer_notional) / equity > self.grid_config.max_symbol_notional_pct:
             return False
-        if (total_notional + layer_notional) / equity > self.grid_config.max_total_notional_pct:
-            return False
-        return True
+        return not (total_notional + layer_notional) / equity > self.grid_config.max_total_notional_pct
 
     def _executable_notional(
         self,
@@ -551,9 +540,7 @@ class BoundedGridEngine:
     def _entry_window_open(self, timestamp: str) -> bool:
         if self.entry_start and timestamp < self.entry_start:
             return False
-        if self.entry_end and timestamp >= self.entry_end:
-            return False
-        return True
+        return not (self.entry_end and timestamp >= self.entry_end)
 
     def _close_position(
         self,
@@ -648,7 +635,7 @@ def next_grid_notional(
 ) -> float:
     base_notional = position.layers[0].notional
     rescue_index = position.rescue_layers + 1
-    notional = base_notional * (config.layer_multiplier ** rescue_index)
+    notional = base_notional * (config.layer_multiplier**rescue_index)
     if key_layer and config.key_layer_multiplier > 1:
         notional *= config.key_layer_multiplier
     return notional
@@ -661,11 +648,7 @@ def effective_layer_step_pct(
     current_rescue_layers: int = 0,
 ) -> float:
     base = config.layer_step_pct
-    if (
-        config.atr_layer_lookback_bars > 0
-        and config.atr_layer_step_multiplier > 0
-        and recent_candles
-    ):
+    if config.atr_layer_lookback_bars > 0 and config.atr_layer_step_multiplier > 0 and recent_candles:
         highs = [candle.high for candle in recent_candles]
         lows = [candle.low for candle in recent_candles]
         closes = [candle.close for candle in recent_candles]

@@ -5,19 +5,16 @@ from __future__ import annotations
 
 import argparse
 import csv
-import sys
 from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from rayn_strategy.backtest import BacktestResult, load_candles
+from rayn_strategy.config import load_config, load_raw_config
+from rayn_strategy.momentum import MomentumConfig, MomentumEngine
+
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
-
-from src.rayn_strategy.backtest import BacktestResult, load_candles
-from src.rayn_strategy.config import load_config, load_raw_config
-from src.rayn_strategy.momentum import MomentumConfig, MomentumEngine
-
 DEFAULT_PERIODS = [
     ("2022 bear", "2022-01-01", "2023-01-01"),
     ("2024-25", "2024-01-01", "2025-10-13"),
@@ -150,8 +147,8 @@ def _parse_periods(raw_periods: list[str] | None) -> list[tuple[str, str, str]]:
     for raw in raw_periods:
         try:
             name, endpoints = raw.split(":", 1)
-        except ValueError as exc:
-            raise ValueError(f"period must be name:start:end, got {raw!r}")
+        except ValueError:
+            raise ValueError(f"period must be name:start:end, got {raw!r}") from None
         parsed = _split_period_endpoints(endpoints)
         if parsed is None:
             raise ValueError(f"period must be name:start:end, got {raw!r}")

@@ -7,8 +7,8 @@ import argparse
 import csv
 from pathlib import Path
 
-from src.rayn_strategy.backtest import BacktestEngine
-from src.rayn_strategy.config import load_config
+from rayn_strategy.backtest import BacktestEngine
+from rayn_strategy.config import load_config
 
 
 def parse_args() -> argparse.Namespace:

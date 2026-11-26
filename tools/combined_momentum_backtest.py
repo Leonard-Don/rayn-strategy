@@ -8,14 +8,10 @@ from __future__ import annotations
 
 import argparse
 import csv
-import sys
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
-
-from src.rayn_strategy.backtest import (
+from rayn_strategy.backtest import (
     BacktestResult,
     EquityPoint,
     Trade,
@@ -24,12 +20,12 @@ from src.rayn_strategy.backtest import (
     normalize_timestamp,
     trading_cost,
 )
-from src.rayn_strategy.config import RaynConfig, load_config, load_raw_config
-from src.rayn_strategy.market_filter import ShortCandidateFilter, short_candidate_allows_entry
-from src.rayn_strategy.momentum import MomentumConfig, MomentumEngine, MomPosition, atr_pct
-from src.rayn_strategy.indicators import sma
+from rayn_strategy.config import RaynConfig, load_config, load_raw_config
+from rayn_strategy.indicators import sma
+from rayn_strategy.market_filter import ShortCandidateFilter, short_candidate_allows_entry
+from rayn_strategy.momentum import MomentumConfig, MomentumEngine, MomPosition, atr_pct
 
-
+ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_PERIODS = [
     ("2026 YTD", "2026-01-01", "2026-06-06"),
     ("2026 MarNow", "2026-03-01", "2026-06-06"),
@@ -102,12 +98,8 @@ class CombinedMomentumEngine:
         self.preloaded_data = preloaded_data
         self.short_candidate_filter = short_candidate_filter
         self.dynamic_short_risk = dynamic_short_risk or DynamicShortRiskConfig()
-        self.long_helper = MomentumEngine(
-            config=long_config, mom=long_mom, data_dir=data_dir, symbols=symbols
-        )
-        self.short_helper = MomentumEngine(
-            config=short_config, mom=short_mom, data_dir=data_dir, symbols=symbols
-        )
+        self.long_helper = MomentumEngine(config=long_config, mom=long_mom, data_dir=data_dir, symbols=symbols)
+        self.short_helper = MomentumEngine(config=short_config, mom=short_mom, data_dir=data_dir, symbols=symbols)
 
     def run(self) -> BacktestResult:
         data = self.preloaded_data or {s: load_candles(self.data_dir / f"{s}.csv") for s in self.symbols}
@@ -224,8 +216,15 @@ class CombinedMomentumEngine:
             marked = self._marked(cash, positions, marks)
             peak = max(peak, marked)
             max_dd = max(max_dd, current_drawdown(marked, peak))
-            curve.append(EquityPoint(ts, cash, marked, sum(p.position.notional for p in positions.values()),
-                                     sum(p.position.notional / p.config.risk.leverage for p in positions.values())))
+            curve.append(
+                EquityPoint(
+                    ts,
+                    cash,
+                    marked,
+                    sum(p.position.notional for p in positions.values()),
+                    sum(p.position.notional / p.config.risk.leverage for p in positions.values()),
+                )
+            )
 
         finals = {s: by_time[s][last_ts].close for s in self.symbols}
         for symbol, active in list(positions.items()):
@@ -234,8 +233,14 @@ class CombinedMomentumEngine:
             del positions[symbol]
         peak = max(peak, cash)
         max_dd = max(max_dd, current_drawdown(cash, peak))
-        return BacktestResult(self.long_config.portfolio.initial_equity, cash, peak, max_dd, trades=trades,
-                              equity_curve=curve)
+        return BacktestResult(
+            self.long_config.portfolio.initial_equity,
+            cash,
+            peak,
+            max_dd,
+            trades=trades,
+            equity_curve=curve,
+        )
 
     def _try_entries(
         self,
@@ -270,26 +275,21 @@ class CombinedMomentumEngine:
             atr = atr_pct(highs[symbol], lows[symbol], closes[symbol], mom.atr_bars)
             if atr is None or atr <= 0:
                 continue
-            if side > 0:
-                should_enter = helper._entry_long(closes[symbol])
-            else:
-                should_enter = helper._entry_short(closes[symbol])
+            should_enter = helper._entry_long(closes[symbol]) if side > 0 else helper._entry_short(closes[symbol])
             if not should_enter:
                 continue
-            if side < 0 and self.short_candidate_filter is not None:
-                if not short_candidate_allows_entry(candles[symbol], self.short_candidate_filter):
-                    continue
+            if (
+                side < 0
+                and self.short_candidate_filter is not None
+                and not short_candidate_allows_entry(candles[symbol], self.short_candidate_filter)
+            ):
+                continue
             quality = helper._entry_quality(side, closes[symbol])
             if quality.risk_multiplier <= 0.0:
                 continue
             price = marks[symbol]
             stop_dist = mom.stop_atr_mult * atr
-            notional = (
-                marked
-                * mom.risk_per_trade_pct
-                * risk_multiplier
-                * quality.risk_multiplier
-            ) / stop_dist
+            notional = (marked * mom.risk_per_trade_pct * risk_multiplier * quality.risk_multiplier) / stop_dist
             notional = min(notional, marked * config.risk.max_position_notional_pct)
             total = sum(p.position.notional for p in positions.values())
             cap = marked * config.risk.max_total_notional_pct
@@ -305,15 +305,11 @@ class CombinedMomentumEngine:
         return cash
 
     def _window_open(self, ts: str) -> bool:
-        if self.entry_start and ts < self.entry_start:
-            return False
-        return True
+        return not (self.entry_start and ts < self.entry_start)
 
     def _marked(self, cash: float, positions: dict[str, ActivePosition], prices: dict[str, float]) -> float:
         unrealized = sum(
-            active.position.side
-            * active.position.notional
-            * ((prices[symbol] / active.position.entry_price) - 1.0)
+            active.position.side * active.position.notional * ((prices[symbol] / active.position.entry_price) - 1.0)
             for symbol, active in positions.items()
         )
         return cash + unrealized
@@ -324,9 +320,19 @@ class CombinedMomentumEngine:
         one_side = trading_cost(pos.notional, active.config)
         pnl = gross - 2 * one_side
         cash = cash + gross - one_side
-        trade = Trade(pos.symbol, pos.entry_time, ts, pos.entry_price, price, pos.notional, pnl,
-                      active.entry_reason, reason)
+        trade = Trade(
+            pos.symbol,
+            pos.entry_time,
+            ts,
+            pos.entry_price,
+            price,
+            pos.notional,
+            pnl,
+            active.entry_reason,
+            reason,
+        )
         return trade, cash
+
 
 def _parse_symbols(raw: str) -> list[str]:
     return [s.strip().upper() for s in raw.split(",") if s.strip()]
@@ -418,7 +424,9 @@ def run_matrix(
 
 
 def _print_rows(rows: list[dict[str, str | float | int]]) -> None:
-    print(f"{'breadth':>8} {'period':16} {'ROI':>9} {'maxDD':>8} {'trades':>7} {'long':>6} {'short':>6} {'win%':>7} {'W/L':>6}")
+    print(
+        f"{'breadth':>8} {'period':16} {'ROI':>9} {'maxDD':>8} {'trades':>7} {'long':>6} {'short':>6} {'win%':>7} {'W/L':>6}"  # noqa: E501
+    )
     for row in rows:
         print(
             f"{row['threshold']:8.0%} {row['period']:16} "
@@ -451,11 +459,7 @@ def main() -> int:
     args = parser.parse_args()
 
     candidate_filter = None
-    if (
-        args.short_min_24h_quote_volume > 0.0
-        or args.short_max_24h_range_pct > 0.0
-        or args.short_max_below_ma_pct > 0.0
-    ):
+    if args.short_min_24h_quote_volume > 0.0 or args.short_max_24h_range_pct > 0.0 or args.short_max_below_ma_pct > 0.0:
         candidate_filter = ShortCandidateFilter(
             min_24h_quote_volume=args.short_min_24h_quote_volume,
             max_24h_range_pct=args.short_max_24h_range_pct,

@@ -38,9 +38,11 @@ It is research software only, not investment advice.
 
 ## Quick Start
 
-Install test dependencies in your preferred Python environment, then run:
+Install the package in editable mode (Python 3.12+), then run lint and tests:
 
 ```bash
+python3 -m pip install -e '.[dev]'   # add ,plot for tools/plot_multicycle.py
+ruff check . && ruff format --check .
 python3 -m pytest -q
 ```
 

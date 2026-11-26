@@ -8,19 +8,16 @@ from __future__ import annotations
 
 import argparse
 import csv
-import sys
 from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from rayn_strategy.backtest import BacktestResult, load_candles
+from rayn_strategy.config import load_config, load_raw_config
+from rayn_strategy.momentum import MomentumConfig, MomentumEngine
+
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
-
-from src.rayn_strategy.backtest import BacktestResult, load_candles
-from src.rayn_strategy.config import load_config, load_raw_config
-from src.rayn_strategy.momentum import MomentumConfig, MomentumEngine
-
 DEFAULT_PERIODS = [
     ("2022 bear", "2022-01-01", "2023-01-01"),
     ("2024-25", "2024-01-01", "2025-10-13"),
@@ -99,7 +96,7 @@ def compare_quality_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for row in rows:
         by_period.setdefault(row["period"], {})[row["variant"]] = row
 
-    for period, variants in by_period.items():
+    for _period, variants in by_period.items():
         baseline = variants.get("off")
         if not baseline:
             continue

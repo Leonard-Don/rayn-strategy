@@ -6,12 +6,9 @@ from __future__ import annotations
 import argparse
 from dataclasses import replace
 from pathlib import Path
-import sys
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
-from src.rayn_strategy.backtest import BacktestEngine
-from src.rayn_strategy.config import RaynConfig, load_config
+from rayn_strategy.backtest import BacktestEngine
+from rayn_strategy.config import RaynConfig, load_config
 
 
 def parse_args() -> argparse.Namespace:
@@ -82,9 +79,7 @@ def main() -> int:
                                     data_dir=Path(args.data),
                                     symbols=symbols,
                                 ).run()
-                                roi = (
-                                    result.final_equity - result.initial_equity
-                                ) / result.initial_equity
+                                roi = (result.final_equity - result.initial_equity) / result.initial_equity
                                 score = roi - (2.0 * result.max_drawdown_pct)
                                 if result.halted:
                                     score -= 0.05

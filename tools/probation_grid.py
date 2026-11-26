@@ -5,17 +5,17 @@ from __future__ import annotations
 
 import argparse
 import csv
-from datetime import datetime, timezone
-from pathlib import Path
 import sys
+from datetime import UTC, datetime
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from rayn_strategy.backtest import BacktestResult
+from rayn_strategy.config import load_config
+from rayn_strategy.grid import BoundedGridEngine
+from rayn_strategy.probation import TradeLike, select_eligible_symbols, symbol_stats
 from run_grid_backtest import load_grid_config
-from src.rayn_strategy.backtest import BacktestResult
-from src.rayn_strategy.config import load_config
-from src.rayn_strategy.grid import BoundedGridEngine
-from src.rayn_strategy.probation import TradeLike, select_eligible_symbols, symbol_stats
 
 
 def parse_args() -> argparse.Namespace:
@@ -194,7 +194,7 @@ def next_month(timestamp: str) -> str:
     parsed = datetime.fromisoformat(timestamp)
     year = parsed.year + (1 if parsed.month == 12 else 0)
     month = 1 if parsed.month == 12 else parsed.month + 1
-    return datetime(year, month, 1, tzinfo=timezone.utc).isoformat()
+    return datetime(year, month, 1, tzinfo=UTC).isoformat()
 
 
 def to_utc(value: str) -> str:
@@ -205,8 +205,8 @@ def to_utc(value: str) -> str:
         item = item[:-1] + "+00:00"
     parsed = datetime.fromisoformat(item)
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(timezone.utc).isoformat()
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC).isoformat()
 
 
 if __name__ == "__main__":

@@ -12,15 +12,14 @@ from __future__ import annotations
 
 import argparse
 import csv
-from datetime import datetime, timezone
+import json
+import time
+from datetime import UTC, datetime
 from http.client import IncompleteRead
 from pathlib import Path
-import time
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
-import json
-
 
 BASE_URL = "https://fapi.binance.com/fapi/v1/fundingRate"
 
@@ -129,10 +128,7 @@ def write_csv(path: Path, rows: list[tuple[int, float]]) -> None:
 
 
 def iso_utc(ftime_ms: int) -> str:
-    return (
-        datetime.fromtimestamp(ftime_ms / 1000, tz=timezone.utc)
-        .strftime("%Y-%m-%dT%H:%M:%SZ")
-    )
+    return datetime.fromtimestamp(ftime_ms / 1000, tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def to_ms(value: str) -> int:
@@ -143,7 +139,7 @@ def to_ms(value: str) -> int:
         item = item[:-1] + "+00:00"
     parsed = datetime.fromisoformat(item)
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
+        parsed = parsed.replace(tzinfo=UTC)
     return int(parsed.timestamp() * 1000)
 
 

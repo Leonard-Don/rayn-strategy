@@ -8,15 +8,14 @@ from __future__ import annotations
 
 import argparse
 import csv
-from datetime import datetime, timezone
+import json
+import time
+from datetime import UTC, datetime
 from http.client import IncompleteRead, RemoteDisconnected
 from pathlib import Path
-import time
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
-import json
-
 
 BASE_URL = "https://fapi.binance.com/fapi/v1/klines"
 
@@ -127,7 +126,7 @@ def write_csv(path: Path, rows: list[list[object]]) -> None:
         for row in rows:
             writer.writerow(
                 [
-                    datetime.fromtimestamp(int(row[0]) / 1000, tz=timezone.utc).isoformat(),
+                    datetime.fromtimestamp(int(row[0]) / 1000, tz=UTC).isoformat(),
                     row[1],
                     row[2],
                     row[3],
@@ -145,7 +144,7 @@ def to_ms(value: str) -> int:
         item = item[:-1] + "+00:00"
     parsed = datetime.fromisoformat(item)
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
+        parsed = parsed.replace(tzinfo=UTC)
     return int(parsed.timestamp() * 1000)
 
 

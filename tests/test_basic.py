@@ -1,21 +1,19 @@
-from pathlib import Path
 import csv
-from dataclasses import replace
-import sys
 import tempfile
+from dataclasses import replace
+from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-
-from src.rayn_strategy.config import (
+from rayn_strategy.backtest import BacktestEngine, Candle
+from rayn_strategy.config import (
     CircuitBreakerConfig,
     PortfolioConfig,
     RaynConfig,
     RiskConfig,
     StrategyConfig,
 )
-from src.rayn_strategy.backtest import BacktestEngine, Candle
-from src.rayn_strategy.grid import (
+from rayn_strategy.exchange_filters import SymbolFilter
+from rayn_strategy.funding import FundingEvent, funding_cost_for_trade
+from rayn_strategy.grid import (
     BoundedGridConfig,
     BoundedGridEngine,
     GridLayer,
@@ -31,14 +29,20 @@ from src.rayn_strategy.grid import (
     should_cooldown_symbol,
     should_trim_grid_layers,
 )
-from src.rayn_strategy.funding import FundingEvent, funding_cost_for_trade
-from src.rayn_strategy.exchange_filters import SymbolFilter
-from src.rayn_strategy.indicators import atr_pct, average_range_pct, lower_wick_pct, pct_change, rolling_high, rsi, sma, volume_spike
-from src.rayn_strategy.signal_check import evaluate_signal_check
-from src.rayn_strategy.risk import RiskManager
-from src.rayn_strategy.signals import entry_signal
-from src.rayn_strategy.signals import market_regime_filter_reason
-from src.rayn_strategy.probation import TradeLike, select_eligible_symbols, symbol_stats
+from rayn_strategy.indicators import (
+    atr_pct,
+    average_range_pct,
+    lower_wick_pct,
+    pct_change,
+    rolling_high,
+    rsi,
+    sma,
+    volume_spike,
+)
+from rayn_strategy.probation import TradeLike, select_eligible_symbols, symbol_stats
+from rayn_strategy.risk import RiskManager
+from rayn_strategy.signal_check import evaluate_signal_check
+from rayn_strategy.signals import entry_signal, market_regime_filter_reason
 
 
 def test_indicators() -> None:
@@ -194,7 +198,9 @@ def test_backtest_only_opens_entries_inside_entry_window() -> None:
         ).run()
 
         assert result.trades
-        assert all("2026-02-01T05:00:00+00:00" <= trade.entry_time < "2026-02-01T08:00:00+00:00" for trade in result.trades)
+        assert all(
+            "2026-02-01T05:00:00+00:00" <= trade.entry_time < "2026-02-01T08:00:00+00:00" for trade in result.trades
+        )
 
 
 def test_backtest_run_end_closes_without_future_prices() -> None:
@@ -382,9 +388,7 @@ def test_bounded_grid_skips_entry_when_min_order_distortion_is_too_high() -> Non
             entry_start="2026-02-01T05:00:00+00:00",
             entry_end="2026-02-01T08:00:00+00:00",
             run_end="2026-02-01T10:00:00+00:00",
-            symbol_filters={
-                "BTCUSDT": SymbolFilter(min_qty=1.0, step_size=1.0, min_notional=0.0)
-            },
+            symbol_filters={"BTCUSDT": SymbolFilter(min_qty=1.0, step_size=1.0, min_notional=0.0)},
             max_min_order_distortion=1.5,
         ).run()
 

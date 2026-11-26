@@ -8,15 +8,13 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
+from rayn_strategy.backtest import load_candles
+from rayn_strategy.paper_account import append_snapshot_csv, build_paper_account_snapshot
+from rayn_strategy.paths import repo_output_path
 
-from src.rayn_strategy.backtest import load_candles
-from src.rayn_strategy.paper_account import append_snapshot_csv, build_paper_account_snapshot
-from src.rayn_strategy.paths import repo_output_path
+ROOT = Path(__file__).resolve().parent.parent
 
 
 def main() -> int:

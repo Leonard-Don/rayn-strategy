@@ -10,12 +10,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .backtest import Candle
-from .indicators import sma, atr_pct, pct_change
-
+from .indicators import atr_pct, pct_change, sma
 
 # ---------------------------------------------------------------------------
 # Data model
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class SymbolScore:
@@ -43,6 +43,7 @@ class SymbolScore:
 # ---------------------------------------------------------------------------
 # Core scoring
 # ---------------------------------------------------------------------------
+
 
 def score_symbols(
     candles_by_symbol: dict[str, list[Candle]],
@@ -94,11 +95,7 @@ def score_symbols(
         if total_weight <= 0:
             composite = 0.0
         else:
-            composite = (
-                trend_weight * trend
-                + volatility_weight * volatility
-                + volume_weight * volume
-            ) / total_weight
+            composite = (trend_weight * trend + volatility_weight * volatility + volume_weight * volume) / total_weight
 
         results.append(
             SymbolScore(
@@ -118,6 +115,7 @@ def score_symbols(
 # ---------------------------------------------------------------------------
 # Convenience
 # ---------------------------------------------------------------------------
+
 
 def select_top_symbols(
     candles_by_symbol: dict[str, list[Candle]],
@@ -139,6 +137,7 @@ def select_top_symbols(
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _compute_trend_score(
     candles: list[Candle],
