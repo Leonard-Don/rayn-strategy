@@ -9,7 +9,6 @@ experiments. It is not connected to an exchange account.
 - `src/rayn_strategy/grid.py` - bounded grid research engine.
 - `src/rayn_strategy/momentum.py` - momentum engine for long and short research.
 - `src/rayn_strategy/exchange_filters.py` - pure offline helpers for minimum-size feasibility checks.
-- `src/rayn_strategy/signal_check.py` - read-only signal evaluation over provided candle data.
 
 ## Main Tools
 

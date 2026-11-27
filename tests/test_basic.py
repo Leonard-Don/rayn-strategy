@@ -40,7 +40,6 @@ from rayn_strategy.indicators import (
 )
 from rayn_strategy.probation import TradeLike, select_eligible_symbols, symbol_stats
 from rayn_strategy.risk import RiskManager
-from rayn_strategy.signal_check import evaluate_signal_check
 from rayn_strategy.signals import entry_signal, market_regime_filter_reason
 
 
@@ -687,47 +686,6 @@ def test_symbol_probation_rejects_tail_loss_symbol() -> None:
     assert selected == ["BTCUSDT", "ZECUSDT"]
 
 
-def test_signal_check_stops_when_equity_below_stage_stop() -> None:
-    result = evaluate_signal_check(
-        make_config(),
-        {"BTCUSDT": make_signal_candles()},
-        equity=77.0,
-        stop_equity=78.0,
-    )
-
-    assert result.verdict == "STOP"
-    assert result.primary_reason == "stage_stop"
-
-
-def test_signal_check_goes_when_entry_signal_is_available() -> None:
-    result = evaluate_signal_check(
-        make_config(),
-        {"BTCUSDT": make_signal_candles()},
-        equity=100.0,
-        stop_equity=78.0,
-    )
-
-    assert result.verdict == "GO"
-    assert result.buy_symbols == ["BTCUSDT"]
-
-
-def test_signal_check_stops_when_benchmark_circuit_breaker_triggers() -> None:
-    candles = make_signal_candles()
-    candles[-1] = Candle(
-        timestamp=candles[-1].timestamp,
-        open=94.0,
-        high=95.0,
-        low=92.0,
-        close=92.0,
-        volume=1000.0,
-    )
-
-    result = evaluate_signal_check(make_config(), {"BTCUSDT": candles})
-
-    assert result.verdict == "STOP"
-    assert result.primary_reason == "benchmark_drop"
-
-
 def make_config() -> RaynConfig:
     return RaynConfig(
         portfolio=PortfolioConfig(
@@ -834,7 +792,4 @@ if __name__ == "__main__":
     test_deep_take_profit_overrides_default_take_profit()
     test_should_cooldown_symbol_after_tail_exit_or_deep_loss()
     test_symbol_probation_rejects_tail_loss_symbol()
-    test_signal_check_stops_when_equity_below_stage_stop()
-    test_signal_check_goes_when_entry_signal_is_available()
-    test_signal_check_stops_when_benchmark_circuit_breaker_triggers()
     print("ok")
