@@ -21,7 +21,7 @@ It is research software only, not investment advice.
 - bounded grid and momentum research engines
 - risk checks, market filters, and indicator helpers
 - offline backtest runners
-- public market-data fetchers for klines and funding rates
+- public market-data fetcher for klines
 - TOML strategy profiles
 - unit and behavior tests
 

@@ -41,10 +41,6 @@ reports/runtime/fills-log.csv
 
 # Market data CSVs (regenerable via tools/fetch_binance_klines.py); keep READMEs
 data/*.csv
-data/funding/*.csv
 data_2024_2025/*.csv
-data_2024_2025/funding/*.csv
-data_depeg/*.csv
-data_funding/*.csv
 data_multicycle/*.csv
-data_stress_flash_busy/*.csv
+*.egg-info/

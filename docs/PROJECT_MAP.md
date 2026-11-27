@@ -10,7 +10,6 @@ experiments. It is not connected to an exchange account.
 - `src/rayn_strategy/momentum.py` - momentum engine for long and short research.
 - `src/rayn_strategy/exchange_filters.py` - pure offline helpers for minimum-size feasibility checks.
 - `src/rayn_strategy/signal_check.py` - read-only signal evaluation over provided candle data.
-- `src/rayn_strategy/paper_account.py` - local simulated account snapshots.
 
 ## Main Tools
 
@@ -21,7 +20,6 @@ experiments. It is not connected to an exchange account.
 - `tools/combined_momentum_backtest.py` - combined long/short comparison runner.
 - `tools/sim_review_report.py` - simulated-account review renderer.
 - `tools/fetch_binance_klines.py` - public kline fetcher.
-- `tools/fetch_binance_funding.py` - public funding-rate fetcher.
 
 ## Profiles
 
