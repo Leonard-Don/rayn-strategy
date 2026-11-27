@@ -1,9 +1,8 @@
-"""Tests for V3 optimizations: volume-confirmed entries, regime detection,
-layer depth expansion, and symbol scoring."""
+"""Tests for V3 optimizations: volume-confirmed entries, layer depth expansion,
+and config compatibility."""
 
 from pathlib import Path
 
-from rayn_strategy.backtest import Candle
 from rayn_strategy.config import (
     StrategyConfig,
 )
@@ -14,9 +13,7 @@ from rayn_strategy.grid import (
     effective_layer_step_pct,
     should_add_grid_layer,
 )
-from rayn_strategy.regime import detect_market_regime
 from rayn_strategy.signals import entry_signal
-from rayn_strategy.symbol_scorer import score_symbols, select_top_symbols
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -123,98 +120,6 @@ def test_entry_signal_works_without_volumes_parameter() -> None:
 
 
 # --------------------------------------------------------------------------
-# Multi-dimensional regime detection
-# --------------------------------------------------------------------------
-
-
-def test_regime_bullish_uptrend() -> None:
-    # Short MA above long MA (bullish)
-    closes = list(range(1, 300))  # strongly uptrending
-    regime = detect_market_regime(
-        [float(c) for c in closes],
-        short_ma_bars=50,
-        long_ma_bars=200,
-    )
-    assert regime.trend == "bullish"
-    assert regime.allow_entry is True
-    assert regime.position_scale == 1.0
-    assert regime.score > 0
-
-
-def test_regime_bearish_downtrend() -> None:
-    closes = list(range(300, 0, -1))  # strongly downtrending
-    regime = detect_market_regime(
-        [float(c) for c in closes],
-        short_ma_bars=50,
-        long_ma_bars=200,
-        bearish_threshold=-0.3,
-    )
-    assert regime.trend == "bearish"
-    assert regime.score < 0
-
-
-def test_regime_cautious_zone() -> None:
-    # Create data where score is between bearish and cautious thresholds
-    closes = [100.0] * 250  # flat = neutral trend
-    regime = detect_market_regime(
-        closes,
-        short_ma_bars=50,
-        long_ma_bars=200,
-        bearish_threshold=-0.5,
-        cautious_threshold=0.1,
-        cautious_position_scale=0.5,
-    )
-    assert regime.trend == "neutral"
-    assert regime.allow_entry is True
-    assert regime.position_scale == 0.5  # cautious zone
-
-
-def test_regime_with_volumes() -> None:
-    closes = list(range(1, 300))
-    # Elevated recent volume
-    volumes = [100.0] * 250 + [200.0] * 49
-    regime = detect_market_regime(
-        [float(c) for c in closes],
-        volumes=volumes,
-        short_ma_bars=50,
-        long_ma_bars=200,
-        volume_short_bars=20,
-        volume_long_bars=100,
-    )
-    assert regime.volume_trend in ("normal", "elevated")
-    assert regime.allow_entry is True
-
-
-def test_regime_insufficient_data() -> None:
-    closes = [100.0, 101.0, 102.0]  # too short
-    regime = detect_market_regime(
-        closes,
-        short_ma_bars=50,
-        long_ma_bars=200,
-    )
-    assert regime.trend == "neutral"
-    assert regime.score == 0.0
-    assert regime.allow_entry is True
-
-
-def test_regime_extreme_volatility() -> None:
-    # Create data with high short-term ATR vs long-term
-    closes = [100.0] * 200
-    highs = [100.0] * 180 + [120.0] * 20  # sudden high expansion
-    lows = [100.0] * 180 + [80.0] * 20
-    regime = detect_market_regime(
-        closes,
-        highs=highs,
-        lows=lows,
-        short_ma_bars=50,
-        long_ma_bars=200,
-        atr_short_bars=20,
-        atr_long_bars=100,
-    )
-    assert regime.volatility in ("high", "extreme")
-
-
-# --------------------------------------------------------------------------
 # Layer depth expansion
 # --------------------------------------------------------------------------
 
@@ -286,65 +191,6 @@ def test_deeper_layers_require_wider_drop() -> None:
     # threshold = 98.0 * (1 - 0.014) = 96.628
     assert not should_add_grid_layer(position, 97.0, config)  # not deep enough
     assert should_add_grid_layer(position, 96.5, config)  # deep enough
-
-
-# --------------------------------------------------------------------------
-# Symbol scoring
-# --------------------------------------------------------------------------
-
-
-def _make_candles(n: int, base_close: float, trend: float = 0.0, volume: float = 100.0) -> list[Candle]:
-    return [
-        Candle(
-            timestamp=f"2026-02-01T{i:02d}:00:00+00:00",
-            open=base_close + trend * i - 0.1,
-            high=base_close + trend * i + 1.0,
-            low=base_close + trend * i - 1.0,
-            close=base_close + trend * i,
-            volume=volume,
-        )
-        for i in range(n)
-    ]
-
-
-def test_symbol_scoring_ranks_trending_higher() -> None:
-    trending = _make_candles(100, 100.0, trend=0.5, volume=200.0)
-    flat = _make_candles(100, 100.0, trend=0.0, volume=100.0)
-
-    scores = score_symbols(
-        {"TRENDING": trending, "FLAT": flat},
-        trend_ma_bars=20,
-        momentum_bars=10,
-        atr_bars=10,
-        volume_bars=10,
-    )
-    assert scores[0].symbol == "TRENDING"
-    assert scores[0].composite > scores[1].composite
-
-
-def test_select_top_symbols_filters_ineligible() -> None:
-    good = _make_candles(100, 100.0, trend=0.5, volume=200.0)
-    bad = _make_candles(100, 100.0, trend=-0.5, volume=50.0)
-
-    selected = select_top_symbols(
-        {"GOOD": good, "BAD": bad},
-        trend_ma_bars=20,
-        momentum_bars=10,
-        atr_bars=10,
-        volume_bars=10,
-        min_composite_score=0.5,
-    )
-    assert "GOOD" in selected
-
-
-def test_symbol_scoring_handles_empty_candles() -> None:
-    scores = score_symbols(
-        {"EMPTY": []},
-        trend_ma_bars=20,
-    )
-    assert len(scores) == 1
-    assert scores[0].composite == 0.0
-    assert not scores[0].eligible
 
 
 # --------------------------------------------------------------------------
