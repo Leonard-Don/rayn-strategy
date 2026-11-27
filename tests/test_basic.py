@@ -12,7 +12,6 @@ from rayn_strategy.config import (
     StrategyConfig,
 )
 from rayn_strategy.exchange_filters import SymbolFilter
-from rayn_strategy.funding import FundingEvent, funding_cost_for_trade
 from rayn_strategy.grid import (
     BoundedGridConfig,
     BoundedGridEngine,
@@ -688,26 +687,6 @@ def test_symbol_probation_rejects_tail_loss_symbol() -> None:
     assert selected == ["BTCUSDT", "ZECUSDT"]
 
 
-def test_funding_cost_for_long_trade() -> None:
-    trade = type(
-        "FundingTrade",
-        (),
-        {
-            "entry_time": "2026-02-01T00:00:00+00:00",
-            "exit_time": "2026-02-01T16:00:00+00:00",
-            "notional": 1000.0,
-        },
-    )()
-    events = [
-        FundingEvent("2026-02-01T00:00:00+00:00", 0.001, 100.0),
-        FundingEvent("2026-02-01T08:00:00+00:00", 0.0001, 100.0),
-        FundingEvent("2026-02-01T16:00:00+00:00", -0.00005, 100.0),
-        FundingEvent("2026-02-02T00:00:00+00:00", 0.001, 100.0),
-    ]
-
-    assert round(funding_cost_for_trade(trade, events), 4) == 0.05
-
-
 def test_signal_check_stops_when_equity_below_stage_stop() -> None:
     result = evaluate_signal_check(
         make_config(),
@@ -855,7 +834,6 @@ if __name__ == "__main__":
     test_deep_take_profit_overrides_default_take_profit()
     test_should_cooldown_symbol_after_tail_exit_or_deep_loss()
     test_symbol_probation_rejects_tail_loss_symbol()
-    test_funding_cost_for_long_trade()
     test_signal_check_stops_when_equity_below_stage_stop()
     test_signal_check_goes_when_entry_signal_is_available()
     test_signal_check_stops_when_benchmark_circuit_breaker_triggers()

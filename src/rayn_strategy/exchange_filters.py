@@ -93,52 +93,12 @@ def symbol_feasibility(
     )
 
 
-def build_symbol_feasibility_report(
-    *,
-    symbols: list[str],
-    config: RaynConfig,
-    equity: float,
-    prices: dict[str, float],
-    symbol_filters: dict[str, SymbolFilter],
-    max_min_order_distortion: float = 1.5,
-) -> list[SymbolFeasibility]:
-    total_notional_cap = equity * config.risk.max_total_notional_pct
-    target_notional = min(entry_notional_for_equity(config, equity), total_notional_cap)
-    report: list[SymbolFeasibility] = []
-    for symbol in symbols:
-        price = prices.get(symbol, 0.0)
-        symbol_filter = symbol_filters.get(symbol, SymbolFilter())
-        report.append(
-            symbol_feasibility(
-                symbol=symbol,
-                target_notional=target_notional,
-                price=price,
-                symbol_filter=symbol_filter,
-                max_min_order_distortion=max_min_order_distortion,
-            )
-        )
-    return report
-
-
 def entry_notional_for_equity(config: RaynConfig, equity: float) -> float:
     if equity <= 0 or config.strategy.stop_loss_pct <= 0:
         return 0.0
     raw = equity * config.risk.risk_per_trade_pct / config.strategy.stop_loss_pct
     cap = equity * config.risk.max_position_notional_pct
     return max(0.0, min(raw, cap))
-
-
-def symbol_filter_refusal(
-    symbol: str,
-    quantity: float,
-    notional: float,
-    symbol_filter: SymbolFilter,
-) -> str:
-    if symbol_filter.min_qty > 0 and quantity < symbol_filter.min_qty:
-        return f"{symbol}:quantity_below_min_qty"
-    if symbol_filter.min_notional > 0 and notional < symbol_filter.min_notional:
-        return f"{symbol}:notional_below_min_notional"
-    return ""
 
 
 def symbol_filters_from_exchange_info(
